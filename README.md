@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PromptDox — Frontend Prototype
 
-## Getting Started
+A **UI-only** prototype for PromptDox, a multi-tenant AI document assistant (RAG). Every screen runs on mock data, local Zustand state and simulated streaming. There is no backend, database or auth provider.
 
-First, run the development server:
+## Stack
+
+Next.js 16 (App Router, Cache Components) · TypeScript (strict) · Tailwind CSS v4 · shadcn-style primitives on Radix · Framer Motion · Lucide · Zustand
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # http://localhost:3000
+npm run build   # type-checks and prerenders all routes
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Routes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Route | What it shows |
+| --- | --- |
+| `/` | Landing page: hero with a self-playing demo, feature grid, how-it-works timeline, pricing with billing toggle |
+| `/features`, `/pricing` | Marketing detail pages (security section, FAQ) |
+| `/sign-in`, `/sign-up` | Mock auth: any credentials (or "Continue with Google") redirect to the dashboard |
+| `/dashboard` | Drag-and-drop upload with simulated progress → indexing → ready, plus a document library (grid/list, search, filter, rename/delete/open) |
+| `/workspace/[docId]` | Split-screen document viewer + chat. Answers stream character by character, and citation badges highlight and scroll to the source paragraph |
+| `/profile` | Avatar, Google connection badge, document/query quota meters, preference toggles |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project structure
 
-## Learn More
+```
+app/            (marketing) · (auth) · (dashboard) route groups
+components/     branding · ui · marketing · dashboard · workspace · auth · profile
+mock/           sample documents, canned answers + citations, pricing, user
+store/          Zustand store (uploads, indexing, chats, simulated replies)
+hooks/          useTypewriter: simulated token streaming
+types/          shared TypeScript types
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Notes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- State lives in memory, so a full page reload resets uploads, renames and chats. Client-side navigation keeps them.
+- Uploaded files are never read. Only the name and size are used to create a placeholder document.
+- Mock answers are matched to questions by keyword. Try the suggested questions in each workspace.
