@@ -73,10 +73,16 @@ export interface UserProfile {
   initials: string;
   role: string;
   workspace: string;
-  plan: PricingPlan["id"];
   memberSince: string;
   googleConnected: boolean;
-  documentLimit: number;
-  dailyQueryLimit: number;
   queriesToday: number;
+}
+
+/** Plans a user can switch between in the demo (Enterprise is sales-led). */
+export type SelfServePlan = Exclude<PricingPlan["id"], "enterprise">;
+
+export interface PlanLimits {
+  documents: number;
+  /** `null` means unlimited. */
+  dailyQueries: number | null;
 }

@@ -2,22 +2,25 @@
 
 import { DocumentLibrary } from "@/components/dashboard/DocumentLibrary";
 import { UploadDropzone } from "@/components/dashboard/UploadDropzone";
-import { MOCK_USER } from "@/mock/site";
-import { useWorkspaceStore } from "@/store/workspace-store";
+import { usePlanLimits, useWorkspaceStore } from "@/store/workspace-store";
 
 export function DashboardView() {
   const documents = useWorkspaceStore((state) => state.documents);
   const queriesToday = useWorkspaceStore((state) => state.queriesToday);
+  const limits = usePlanLimits();
   const ready = documents.filter((doc) => doc.status === "ready").length;
   const processing = documents.length - ready;
   const passages = documents.reduce((total, doc) => total + doc.chunkCount, 0);
 
   const stats = [
-    { label: "Documents", value: `${documents.length} of ${MOCK_USER.documentLimit}` },
+    { label: "Documents", value: `${documents.length} of ${limits.documents}` },
     { label: "Ready to ask", value: String(ready) },
     { label: "Processing", value: String(processing) },
     { label: "Passages indexed", value: passages.toLocaleString("en-US") },
-    { label: "Questions today", value: `${queriesToday} of ${MOCK_USER.dailyQueryLimit}` },
+    {
+      label: "Questions today",
+      value: limits.dailyQueries === null ? String(queriesToday) : `${queriesToday} of ${limits.dailyQueries}`,
+    },
   ];
 
   return (

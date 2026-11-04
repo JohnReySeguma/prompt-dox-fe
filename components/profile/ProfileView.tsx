@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { MOCK_USER } from "@/mock/site";
-import { useWorkspaceStore } from "@/store/workspace-store";
+import { UpgradeDialog } from "@/components/billing/UpgradeDialog";
+import { MOCK_USER, PLAN_LIMITS } from "@/mock/site";
+import { useToast } from "@/store/toast-store";
+import { usePlanLimits, useWorkspaceStore } from "@/store/workspace-store";
 import { formatDate } from "@/lib/utils";
 
 const SETTINGS = [
@@ -31,8 +33,13 @@ export function ProfileView() {
   const [name, setName] = useState(MOCK_USER.name);
   const [saved, setSaved] = useState(false);
 
-  const docsLeft = MOCK_USER.documentLimit - docCount;
-  const queriesLeft = MOCK_USER.dailyQueryLimit - queriesToday;
+  const limits = usePlanLimits();
+  const setPlan = useWorkspaceStore((state) => state.setPlan);
+  const toast = useToast();
+  const isPro = limits.plan === "pro";
+
+  const docsLeft = limits.documents - docCount;
+  const queriesLeft = limits.dailyQueries === null ? null : limits.dailyQueries - queriesToday;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 lg:py-10">
@@ -65,10 +72,28 @@ export function ProfileView() {
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-          <span className="text-[13px] text-muted-foreground">Free plan</span>
-          <Button asChild size="sm">
-            <Link href="/pricing">Upgrade to Pro</Link>
-          </Button>
+          {isPro ? (
+            <>
+              <span className="rounded-md bg-marker px-2 py-0.5 text-[13px] font-medium">Pro plan</span>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => {
+                  setPlan("free");
+                  toast({ title: "Switched back to Free", description: "Your documents are kept. Uploads are limited to 10 again." });
+                }}
+              >
+                Switch back to Free
+              </Button>
+            </>
+          ) : (
+            <>
+              <span className="text-[13px] text-muted-foreground">Free plan</span>
+              <UpgradeDialog>
+                <Button size="sm">Upgrade to Pro</Button>
+              </UpgradeDialog>
+            </>
+          )}
         </div>
       </section>
 
@@ -81,16 +106,28 @@ export function ProfileView() {
           <QuotaMeter
             label="Documents uploaded"
             used={docCount}
-            limit={MOCK_USER.documentLimit}
+            limit={limits.documents}
             unit="documents"
-            hint={docsLeft > 0 ? `You can upload ${docsLeft} more on the Free plan.` : "Limit reached. Pro raises it to 500 documents."}
+            hint={
+              docsLeft > 0
+                ? `You can upload ${docsLeft} more on the ${isPro ? "Pro" : "Free"} plan.`
+                : isPro
+                  ? "Limit reached. Delete a document to add more."
+                  : `Limit reached. Pro raises it to ${PLAN_LIMITS.pro.documents} documents.`
+            }
           />
           <QuotaMeter
             label="Questions today"
             used={queriesToday}
-            limit={MOCK_USER.dailyQueryLimit}
+            limit={limits.dailyQueries}
             unit="questions"
-            hint={queriesLeft > 0 ? `${queriesLeft} left today. Resets at midnight UTC.` : "Daily limit reached. Resets at midnight UTC."}
+            hint={
+              queriesLeft === null
+                ? "Pro has no daily question limit."
+                : queriesLeft > 0
+                  ? `${queriesLeft} left today. Resets at midnight UTC.`
+                  : "Daily limit reached. Resets at midnight UTC."
+            }
           />
         </div>
       </section>

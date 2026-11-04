@@ -5,7 +5,10 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 import { PRICING_PLANS } from "@/mock/site";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
+import { SalesDialog } from "@/components/billing/SalesDialog";
+import { UpgradeDialog } from "@/components/billing/UpgradeDialog";
 import { Button } from "@/components/ui/button";
+import { useWorkspaceStore } from "@/store/workspace-store";
 import { cn } from "@/lib/utils";
 import type { BillingCycle, PricingPlan } from "@/types";
 
@@ -53,6 +56,42 @@ function Price({ plan, cycle }: { plan: PricingPlan; cycle: BillingCycle }) {
   );
 }
 
+function PlanAction({ plan, cycle }: { plan: PricingPlan; cycle: BillingCycle }) {
+  const currentPlan = useWorkspaceStore((state) => state.plan);
+  const variant = plan.highlighted ? "default" : "secondary";
+
+  if (plan.id === currentPlan) {
+    return (
+      <Button variant="secondary" className="w-full" disabled>
+        Your current plan
+      </Button>
+    );
+  }
+  if (plan.id === "pro") {
+    return (
+      <UpgradeDialog cycle={cycle}>
+        <Button variant={variant} className="w-full">
+          {plan.cta}
+        </Button>
+      </UpgradeDialog>
+    );
+  }
+  if (plan.id === "enterprise") {
+    return (
+      <SalesDialog>
+        <Button variant={variant} className="w-full">
+          {plan.cta}
+        </Button>
+      </SalesDialog>
+    );
+  }
+  return (
+    <Button asChild variant={variant} className="w-full">
+      <Link href="/sign-up">{plan.cta}</Link>
+    </Button>
+  );
+}
+
 export function PricingSection({ showHeading = true }: { showHeading?: boolean }) {
   const [cycle, setCycle] = useState<BillingCycle>("yearly");
 
@@ -85,9 +124,9 @@ export function PricingSection({ showHeading = true }: { showHeading?: boolean }
               <div className="mt-6">
                 <Price plan={plan} cycle={cycle} />
               </div>
-              <Button asChild variant={plan.highlighted ? "default" : "secondary"} className="mt-7 w-full">
-                <Link href={plan.id === "enterprise" ? "/pricing#faq" : "/sign-up"}>{plan.cta}</Link>
-              </Button>
+              <div className="mt-7">
+                <PlanAction plan={plan} cycle={cycle} />
+              </div>
               <ul className="mt-7 space-y-2.5 border-t border-border pt-6 text-[14px]">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5">
@@ -99,6 +138,7 @@ export function PricingSection({ showHeading = true }: { showHeading?: boolean }
             </article>
           ))}
         </div>
+        <p className="mt-6 text-[13px] text-subtle-foreground">Prototype pricing. No payment is taken.</p>
       </div>
     </section>
   );

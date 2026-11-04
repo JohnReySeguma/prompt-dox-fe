@@ -5,8 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FileUp, TriangleAlert, Upload, X } from "lucide-react";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
 import { Button } from "@/components/ui/button";
-import { SUPPORTED_FORMATS, useWorkspaceStore } from "@/store/workspace-store";
-import { MOCK_USER } from "@/mock/site";
+import { SUPPORTED_FORMATS, usePlanLimits, useWorkspaceStore } from "@/store/workspace-store";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_FILES = [
@@ -26,7 +25,8 @@ export function UploadDropzone() {
   const [dragging, setDragging] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
-  const atLimit = docCount >= MOCK_USER.documentLimit;
+  const { documents: documentLimit, plan } = usePlanLimits();
+  const atLimit = docCount >= documentLimit;
 
   const handleFiles = (files: Array<{ name: string; size: number }>) => {
     const nextErrors: string[] = [];
@@ -92,10 +92,14 @@ export function UploadDropzone() {
         </motion.span>
         <div className="flex-1">
           <p className="text-[15px] font-semibold">
-            {atLimit ? "You've reached the 10-document limit" : dragging ? "Drop to upload" : "Drop files here, or click to choose"}
+            {atLimit ? `You've reached the ${documentLimit}-document limit` : dragging ? "Drop to upload" : "Drop files here, or click to choose"}
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {atLimit ? "Delete a document or upgrade to Pro to add more." : "Up to 50 MB per file."}
+            {atLimit
+              ? plan === "free"
+                ? "Delete a document or upgrade to Pro to add more."
+                : "Delete a document to add more."
+              : "Up to 50 MB per file."}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-1.5">

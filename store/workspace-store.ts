@@ -3,9 +3,9 @@
 import { create } from "zustand";
 import { buildPlaceholderPages, MOCK_DOCUMENTS } from "@/mock/documents";
 import { findAnswer, INITIAL_CHATS } from "@/mock/knowledge";
-import { MOCK_USER } from "@/mock/site";
+import { MOCK_USER, PLAN_LIMITS } from "@/mock/site";
 import { createId } from "@/lib/utils";
-import type { ChatMessage, DocFormat, DocumentItem } from "@/types";
+import type { ChatMessage, DocFormat, DocumentItem, PlanLimits, SelfServePlan } from "@/types";
 
 export const SUPPORTED_FORMATS: DocFormat[] = ["pdf", "docx", "md", "txt"];
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -18,8 +18,11 @@ interface WorkspaceState {
   /** Doc ids currently waiting for the (simulated) model to start answering. */
   thinking: Record<string, boolean>;
   queriesToday: number;
+  /** Demo-only plan switch; no payment is involved. */
+  plan: SelfServePlan;
 
-  uploadFile: (file: { name: string; size: number }) => UploadResult;
+  setPlan: (plan: SelfServePlan) => void;
+  uploadFile:(file: { name: string; size: number }) => UploadResult;
   renameDocument: (id: string, name: string) => void;
   deleteDocument: (id: string) => void;
   /** Moves any document left in `indexing` to `ready` after a short delay. */
@@ -60,6 +63,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
     chats: INITIAL_CHATS,
     thinking: {},
     queriesToday: MOCK_USER.queriesToday,
+    plan: "free",
+
+    setPlan: (plan) => set({ plan }),
 
     uploadFile: (file) => {
       const format = detectFormat(file.name);
@@ -69,8 +75,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       if (file.size > MAX_FILE_BYTES) {
         return { ok: false, error: `“${file.name}” is larger than 50 MB.` };
       }
-      if (get().documents.length >= MOCK_USER.documentLimit) {
-        return { ok: false, error: "You've reached the 10-document limit on the Free plan." };
+      const { documents: limit } = PLAN_LIMITS[get().plan];
+      if (get().documents.length >= limit) {
+        return { ok: false, error: `You've reached the ${limit}-document limit on your plan.` };
       }
 
       const id = createId("doc");
@@ -167,3 +174,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
     clearChat: (docId) => set((state) => ({ chats: { ...state.chats, [docId]: [] } })),
   };
 });
+
+/** Limits for the plan the demo user is currently on. */
+export function usePlanLimits(): PlanLimits & { plan: SelfServePlan } {
+  const plan = useWorkspaceStore((state) => state.plan);
+  return { plan, ...PLAN_LIMITS[plan] };
+}

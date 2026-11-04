@@ -8,8 +8,9 @@ import { FileStack, LogOut, Menu, MessagesSquare, UserRound, X, type LucideIcon 
 import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { MOCK_USER } from "@/mock/site";
-import { useWorkspaceStore } from "@/store/workspace-store";
+import { UpgradeDialog } from "@/components/billing/UpgradeDialog";
+import { MOCK_USER, PLAN_LIMITS } from "@/mock/site";
+import { usePlanLimits, useWorkspaceStore } from "@/store/workspace-store";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -32,6 +33,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const items = useNavItems();
   const docCount = useWorkspaceStore((state) => state.documents.length);
+  const limits = usePlanLimits();
 
   return (
     <div className="flex h-full flex-col">
@@ -66,13 +68,21 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <div className="flex items-center justify-between text-[13px]">
             <span className="text-muted-foreground">Documents</span>
             <span className="font-medium tabular-nums">
-              {docCount} of {MOCK_USER.documentLimit}
+              {docCount} of {limits.documents}
             </span>
           </div>
-          <Progress value={(docCount / MOCK_USER.documentLimit) * 100} className="mt-2" />
-          <Link href="/pricing" onClick={onNavigate} className="mt-3 inline-block text-[13px] font-medium text-primary hover:underline">
-            Upgrade for 500 documents
-          </Link>
+          <Progress value={(docCount / limits.documents) * 100} className="mt-2" />
+          {limits.plan === "free" ? (
+            <UpgradeDialog>
+              <button type="button" className="mt-3 text-[13px] font-medium text-primary hover:underline">
+                Upgrade for {PLAN_LIMITS.pro.documents} documents
+              </button>
+            </UpgradeDialog>
+          ) : (
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              <span className="rounded bg-marker px-1.5 py-0.5 font-medium text-foreground">Pro</span> plan, this session
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 border-t border-border px-1 pt-3">
