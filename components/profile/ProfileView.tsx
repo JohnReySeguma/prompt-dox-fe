@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { BadgeCheck, Building2, Calendar, Crown, LogOut, Mail, Sparkles } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { GoogleIcon } from "@/components/branding/GoogleIcon";
 import { QuotaMeter } from "@/components/profile/QuotaMeter";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +15,10 @@ import { useWorkspaceStore } from "@/store/workspace-store";
 import { formatDate } from "@/lib/utils";
 
 const SETTINGS = [
-  { id: "strict", title: "Strict citation mode", body: "Refuse to answer when no supporting passage is found.", defaultOn: true },
-  { id: "stream", title: "Stream responses", body: "Show answers token by token as they are generated.", defaultOn: true },
-  { id: "digest", title: "Weekly usage digest", body: "Email a summary of documents and queries every Monday.", defaultOn: false },
-  { id: "share", title: "Allow workspace sharing", body: "Let admins share document collections with teammates.", defaultOn: false },
+  { id: "strict", title: "Only answer with a source", body: "If no passage supports an answer, say so instead of guessing.", defaultOn: true },
+  { id: "stream", title: "Stream answers", body: "Show answers as they're written instead of all at once.", defaultOn: true },
+  { id: "digest", title: "Weekly usage email", body: "A Monday summary of uploads and questions.", defaultOn: false },
+  { id: "share", title: "Allow sharing", body: "Let admins share documents with teammates.", defaultOn: false },
 ] as const;
 
 export function ProfileView() {
@@ -36,76 +35,44 @@ export function ProfileView() {
   const queriesLeft = MOCK_USER.dailyQueryLimit - queriesToday;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 lg:py-10">
-      <header>
-        <p className="font-mono text-xs tracking-[0.18em] text-cyan-300 uppercase">Profile</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Account & usage</h1>
-      </header>
+    <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 lg:py-10">
+      <h1 className="text-[28px] font-semibold tracking-[-0.025em]">Profile & usage</h1>
 
-      {/* Identity card */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="gradient-border glass-strong relative mt-8 overflow-hidden rounded-3xl p-6 sm:p-8"
-      >
-        <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-violet-600/20 blur-3xl" />
-        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
-          <div className="relative w-fit">
-            <span className="grid size-20 place-items-center rounded-3xl bg-linear-to-br from-cyan-400 to-violet-500 text-2xl font-semibold text-white shadow-[0_0_40px_-8px] shadow-cyan-400/60">
-              {MOCK_USER.initials}
-            </span>
-            <span className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full bg-background ring-2 ring-background">
-              <BadgeCheck className="size-5 text-cyan-300" aria-label="Verified" />
-            </span>
+      {/* Identity */}
+      <section className="mt-7 flex flex-col gap-6 rounded-xl border border-border bg-surface p-6 sm:flex-row sm:items-center">
+        <span className="relative grid size-16 shrink-0 place-items-center rounded-full bg-foreground text-xl font-semibold text-white">
+          {MOCK_USER.initials}
+          <BadgeCheck className="absolute -right-0.5 -bottom-0.5 size-6 rounded-full bg-surface fill-primary text-white" aria-label="Verified email" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold tracking-tight">{name || MOCK_USER.name}</h2>
+            <Badge variant="outline">{MOCK_USER.role}</Badge>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight">{name || MOCK_USER.name}</h2>
-              <Badge variant="violet">{MOCK_USER.role}</Badge>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Mail className="size-4" aria-hidden /> {MOCK_USER.email}
+          <p className="mt-1 text-[15px] text-muted-foreground">{MOCK_USER.email}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-muted-foreground">
+            {googleConnected ? (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-foreground">
+                <GoogleIcon className="size-3.5" /> Google account connected
               </span>
-              <span className="flex items-center gap-1.5">
-                <Building2 className="size-4" aria-hidden /> {MOCK_USER.workspace}
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border-strong px-2 py-1">
+                <GoogleIcon className="size-3.5 opacity-50" /> Google not connected
               </span>
-              <span className="flex items-center gap-1.5">
-                <Calendar className="size-4" aria-hidden /> Member since {formatDate(MOCK_USER.memberSince)}
-              </span>
-            </div>
-            <div className="mt-4">
-              {googleConnected ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/8 py-1 pr-3 pl-1 text-xs text-emerald-100">
-                  <span className="grid size-5 place-items-center rounded-full bg-white">
-                    <GoogleIcon className="size-3" />
-                  </span>
-                  Google account connected
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 py-1 pr-3 pl-1 text-xs text-muted-foreground">
-                  <span className="grid size-5 place-items-center rounded-full bg-white/80">
-                    <GoogleIcon className="size-3" />
-                  </span>
-                  Google not connected
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex shrink-0 flex-col gap-2">
-            <Badge variant="outline" className="justify-center">
-              <Crown aria-hidden /> Free plan
-            </Badge>
-            <Button asChild size="sm">
-              <Link href="/pricing">
-                <Sparkles /> Upgrade
-              </Link>
-            </Button>
+            )}
+            <span>{MOCK_USER.workspace}</span>
+            <span>Member since {formatDate(MOCK_USER.memberSince)}</span>
           </div>
         </div>
-      </motion.section>
+        <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+          <span className="text-[13px] text-muted-foreground">Free plan</span>
+          <Button asChild size="sm">
+            <Link href="/pricing">Upgrade to Pro</Link>
+          </Button>
+        </div>
+      </section>
 
-      {/* Quotas */}
+      {/* Usage */}
       <section aria-labelledby="usage-heading" className="mt-10">
         <h2 id="usage-heading" className="text-lg font-semibold tracking-tight">
           Usage
@@ -116,24 +83,23 @@ export function ProfileView() {
             used={docCount}
             limit={MOCK_USER.documentLimit}
             unit="documents"
-            hint={docsLeft > 0 ? `${docsLeft} uploads left on the Free plan` : "Limit reached. Upgrade for 500 documents."}
+            hint={docsLeft > 0 ? `You can upload ${docsLeft} more on the Free plan.` : "Limit reached. Pro raises it to 500 documents."}
           />
           <QuotaMeter
-            label="Queries today"
+            label="Questions today"
             used={queriesToday}
             limit={MOCK_USER.dailyQueryLimit}
-            unit="queries"
-            hint={queriesLeft > 0 ? `${queriesLeft} queries left · resets at midnight UTC` : "Daily limit reached. Resets at midnight UTC."}
+            unit="questions"
+            hint={queriesLeft > 0 ? `${queriesLeft} left today. Resets at midnight UTC.` : "Daily limit reached. Resets at midnight UTC."}
           />
         </div>
       </section>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        {/* Personal info */}
         <Card>
           <CardHeader>
-            <CardTitle>Personal information</CardTitle>
-            <CardDescription>Changes are kept in local state only.</CardDescription>
+            <CardTitle>Personal details</CardTitle>
+            <CardDescription>Changes are kept for this session only.</CardDescription>
           </CardHeader>
           <CardContent>
             <form
@@ -152,41 +118,36 @@ export function ProfileView() {
                 <Label htmlFor="profile-email">Email</Label>
                 <Input id="profile-email" value={MOCK_USER.email} disabled />
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 p-3">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid size-8 place-items-center rounded-lg bg-white">
-                    <GoogleIcon className="size-4" />
-                  </span>
+                  <GoogleIcon className="size-5" />
                   <div>
                     <p className="text-sm font-medium">Google</p>
-                    <p className="text-xs text-muted-foreground">{googleConnected ? "Used for single sign-on" : "Not connected"}</p>
+                    <p className="text-xs text-muted-foreground">{googleConnected ? "Used for sign-in" : "Not connected"}</p>
                   </div>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => setGoogleConnected((value) => !value)}>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setGoogleConnected((value) => !value)}>
                   {googleConnected ? "Disconnect" : "Connect"}
                 </Button>
               </div>
-              <Button type="submit" className="w-full sm:w-auto">
-                {saved ? "Saved ✓" : "Save changes"}
-              </Button>
+              <Button type="submit">{saved ? "Changes saved" : "Save changes"}</Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Preferences */}
         <Card>
           <CardHeader>
-            <CardTitle>Assistant preferences</CardTitle>
-            <CardDescription>Control how PromptDox answers and notifies you.</CardDescription>
+            <CardTitle>Answer preferences</CardTitle>
+            <CardDescription>How PromptDox answers and when it emails you.</CardDescription>
           </CardHeader>
-          <CardContent className="divide-y divide-white/6">
+          <CardContent className="divide-y divide-border">
             {SETTINGS.map((setting) => (
               <div key={setting.id} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
                 <div>
                   <label htmlFor={`setting-${setting.id}`} className="text-sm font-medium">
                     {setting.title}
                   </label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{setting.body}</p>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">{setting.body}</p>
                 </div>
                 <Switch
                   id={`setting-${setting.id}`}
@@ -199,15 +160,10 @@ export function ProfileView() {
         </Card>
       </div>
 
-      <div className="mt-10 flex flex-col items-start justify-between gap-4 rounded-2xl border border-red-400/20 bg-red-500/5 p-5 sm:flex-row sm:items-center">
-        <div>
-          <p className="text-sm font-medium text-red-200">Sign out of PromptDox</p>
-          <p className="text-xs text-muted-foreground">This demo resets all mock data on a full page reload.</p>
-        </div>
-        <Button asChild variant="outline" size="sm" className="border-red-400/30 text-red-200 hover:bg-red-500/10">
-          <Link href="/sign-in">
-            <LogOut /> Sign out
-          </Link>
+      <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
+        <p className="text-sm text-muted-foreground">Signing out resets this demo&apos;s sample data.</p>
+        <Button asChild variant="secondary" size="sm">
+          <Link href="/sign-in">Sign out</Link>
         </Button>
       </div>
     </div>

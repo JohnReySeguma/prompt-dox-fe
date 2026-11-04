@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutDashboard, LogOut, Menu, MessagesSquare, Sparkles, UserRound, X, type LucideIcon } from "lucide-react";
+import { FileStack, LogOut, Menu, MessagesSquare, UserRound, X, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -22,7 +22,7 @@ interface NavItem {
 function useNavItems(): NavItem[] {
   const firstReady = useWorkspaceStore((state) => state.documents.find((doc) => doc.status === "ready")?.id);
   return [
-    { href: "/dashboard", match: "/dashboard", label: "Documents", icon: LayoutDashboard },
+    { href: "/dashboard", match: "/dashboard", label: "Documents", icon: FileStack },
     { href: `/workspace/${firstReady ?? "q3-financial-report"}`, match: "/workspace", label: "Workspace", icon: MessagesSquare },
     { href: "/profile", match: "/profile", label: "Profile & usage", icon: UserRound },
   ];
@@ -35,14 +35,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <Link href="/" className="px-2" onClick={onNavigate} aria-label="PromptDox home">
-        <Logo />
+      <Link href="/" className="px-2 py-1" onClick={onNavigate} aria-label="PromptDox home">
+        <Logo height={28} priority />
       </Link>
 
-      <p className="mt-8 px-3 font-mono text-[10px] tracking-[0.18em] text-muted-foreground/70 uppercase">
-        {MOCK_USER.workspace}
-      </p>
-      <nav className="mt-2 space-y-1" aria-label="App">
+      <p className="mt-8 px-3 text-xs font-medium text-subtle-foreground">{MOCK_USER.workspace}</p>
+      <nav className="mt-2 space-y-0.5" aria-label="App">
         {items.map((item) => {
           const active = pathname.startsWith(item.match);
           return (
@@ -52,18 +50,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
-                active ? "text-foreground" : "text-muted-foreground hover:bg-white/4 hover:text-foreground",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors",
+                active ? "bg-primary-soft font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              {active && (
-                <motion.span
-                  layoutId="sidebar-active"
-                  className="absolute inset-0 -z-10 rounded-xl bg-white/6 ring-1 ring-white/10"
-                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                />
-              )}
-              <item.icon className={cn("size-4", active && "text-cyan-300")} aria-hidden />
+              <item.icon className="size-4" aria-hidden />
               {item.label}
             </Link>
           );
@@ -71,24 +62,22 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-3">
-        <div className="glass rounded-2xl p-4">
-          <div className="flex items-center justify-between text-xs">
+        <div className="rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between text-[13px]">
             <span className="text-muted-foreground">Documents</span>
-            <span className="font-mono text-foreground">
-              {docCount}/{MOCK_USER.documentLimit}
+            <span className="font-medium tabular-nums">
+              {docCount} of {MOCK_USER.documentLimit}
             </span>
           </div>
           <Progress value={(docCount / MOCK_USER.documentLimit) * 100} className="mt-2" />
-          <Button asChild size="sm" className="mt-4 w-full">
-            <Link href="/pricing" onClick={onNavigate}>
-              <Sparkles /> Upgrade to Pro
-            </Link>
-          </Button>
+          <Link href="/pricing" onClick={onNavigate} className="mt-3 inline-block text-[13px] font-medium text-primary hover:underline">
+            Upgrade for 500 documents
+          </Link>
         </div>
 
-        <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+        <div className="flex items-center gap-3 border-t border-border px-1 pt-3">
           <Link href="/profile" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-linear-to-br from-cyan-400 to-violet-500 text-xs font-semibold text-white">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-white">
               {MOCK_USER.initials}
             </span>
             <span className="min-w-0">
@@ -111,21 +100,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="relative flex min-h-screen">
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute -top-48 left-1/3 h-96 w-[640px] rounded-full bg-cyan-500/10 blur-[120px]" />
-        <div className="absolute right-0 bottom-0 h-96 w-[520px] rounded-full bg-violet-600/10 blur-[120px]" />
-      </div>
-
+    <div className="flex min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-white/6 bg-black/20 p-4 backdrop-blur-xl lg:block">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border bg-surface p-4 lg:block">
         <SidebarContent />
       </aside>
 
-      {/* Mobile top bar + drawer */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-white/6 bg-background/80 px-4 backdrop-blur-xl lg:hidden">
+      {/* Mobile app bar + drawer */}
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface px-4 lg:hidden">
         <Link href="/" aria-label="PromptDox home">
-          <Logo />
+          <Logo height={26} priority />
         </Link>
         <Button variant="ghost" size="icon" aria-label="Open navigation" onClick={() => setMobileOpen(true)}>
           <Menu />
@@ -135,14 +119,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {mobileOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-foreground/30 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
             />
             <motion.aside
-              className="glass-strong fixed inset-y-0 left-0 z-50 w-72 p-4 lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-surface p-4 lg:hidden"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}

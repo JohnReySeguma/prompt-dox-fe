@@ -1,19 +1,24 @@
 import { cn } from "@/lib/utils";
 
 interface SectionHeadingProps {
-  eyebrow: string;
   title: React.ReactNode;
   description?: string;
   className?: string;
-  align?: "center" | "left";
+  as?: "h1" | "h2";
 }
 
-export function SectionHeading({ eyebrow, title, description, className, align = "center" }: SectionHeadingProps) {
+export function SectionHeading({ title, description, className, as: Tag = "h2" }: SectionHeadingProps) {
   return (
-    <div className={cn("max-w-2xl", align === "center" && "mx-auto text-center", className)}>
-      <p className="font-mono text-xs font-medium tracking-[0.2em] text-cyan-300 uppercase">{eyebrow}</p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{title}</h2>
-      {description && <p className="mt-4 text-base leading-relaxed text-pretty text-muted-foreground">{description}</p>}
+    <div className={cn("max-w-[640px]", className)}>
+      <Tag
+        className={cn(
+          "font-semibold tracking-[-0.03em] text-balance",
+          Tag === "h1" ? "text-[clamp(2.4rem,4.6vw,3.6rem)] leading-[1.05]" : "text-[clamp(1.9rem,3.2vw,2.6rem)] leading-[1.1]",
+        )}
+      >
+        {title}
+      </Tag>
+      {description && <p className="mt-4 max-w-[56ch] text-[17px] leading-relaxed text-muted-foreground">{description}</p>}
     </div>
   );
 }

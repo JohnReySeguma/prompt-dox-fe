@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowRight, Eye, EyeOff, LoaderCircle, Lock, Mail, UserRound } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { GoogleIcon } from "@/components/branding/GoogleIcon";
-import { LogoMark } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { MOCK_USER } from "@/mock/site";
@@ -15,8 +13,8 @@ type Mode = "sign-in" | "sign-up";
 
 const COPY: Record<Mode, { title: string; subtitle: string; submit: string; switchText: string; switchLink: string; switchHref: string }> = {
   "sign-in": {
-    title: "Welcome back",
-    subtitle: "Sign in to your PromptDox workspace",
+    title: "Sign in to PromptDox",
+    subtitle: "Pick up where you left off in your workspace.",
     submit: "Sign in",
     switchText: "New to PromptDox?",
     switchLink: "Create an account",
@@ -24,7 +22,7 @@ const COPY: Record<Mode, { title: string; subtitle: string; submit: string; swit
   },
   "sign-up": {
     title: "Create your workspace",
-    subtitle: "Start with 10 documents free, no card required",
+    subtitle: "Your first 10 documents are free. No card needed.",
     submit: "Create account",
     switchText: "Already have an account?",
     switchLink: "Sign in",
@@ -41,28 +39,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   const fakeSignIn = (method: "google" | "email") => {
     setPending(method);
-    setTimeout(() => router.push("/dashboard"), 1100);
+    setTimeout(() => router.push("/dashboard"), 1000);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="gradient-border glass-strong w-full max-w-md rounded-3xl p-8 shadow-2xl shadow-black/50"
-    >
-      <div className="text-center">
-        <Link href="/" aria-label="PromptDox home" className="inline-block">
-          <LogoMark className="mx-auto size-11" />
-        </Link>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">{copy.title}</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">{copy.subtitle}</p>
-      </div>
+    <div className="w-full max-w-[380px]">
+      <h1 className="text-[28px] font-semibold tracking-[-0.025em]">{copy.title}</h1>
+      <p className="mt-1.5 text-[15px] text-muted-foreground">{copy.subtitle}</p>
 
       <Button
         type="button"
         variant="secondary"
-        className="mt-8 h-11 w-full bg-white/6"
+        className="mt-8 h-11 w-full"
         disabled={pending !== null}
         onClick={() => fakeSignIn("google")}
       >
@@ -70,10 +58,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
         Continue with Google
       </Button>
 
-      <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-white/10" />
-        or with email
-        <span className="h-px flex-1 bg-white/10" />
+      <div className="my-6 flex items-center gap-3 text-xs text-subtle-foreground">
+        <span className="h-px flex-1 bg-border" />
+        or use your email
+        <span className="h-px flex-1 bg-border" />
       </div>
 
       <form
@@ -86,75 +74,69 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {mode === "sign-up" && (
           <div className="space-y-1.5">
             <Label htmlFor="name">Full name</Label>
-            <div className="relative">
-              <UserRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <Input id="name" name="name" autoComplete="name" placeholder="Avery Santos" className="h-11 pl-10" required />
-            </div>
+            <Input id="name" name="name" autoComplete="name" className="h-11" required />
           </div>
         )}
         <div className="space-y-1.5">
           <Label htmlFor="email">Work email</Label>
-          <div className="relative">
-            <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@company.com"
-              defaultValue={mode === "sign-in" ? MOCK_USER.email : undefined}
-              className="h-11 pl-10"
-              required
-            />
-          </div>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@company.com"
+            defaultValue={mode === "sign-in" ? MOCK_USER.email : undefined}
+            className="h-11"
+            required
+          />
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
             {mode === "sign-in" && (
-              <button type="button" className="text-xs text-cyan-300 hover:underline">
+              <button type="button" className="text-[13px] text-primary hover:underline">
                 Forgot password?
               </button>
             )}
           </div>
           <div className="relative">
-            <Lock className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input
               id="password"
               name="password"
               type={showPassword ? "text" : "password"}
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-              placeholder="••••••••"
               defaultValue={mode === "sign-in" ? "demo-password" : undefined}
               minLength={8}
-              className="h-11 pr-10 pl-10"
+              className="h-11 pr-10"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-subtle-foreground hover:text-foreground"
             >
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
+          {mode === "sign-up" && <p className="text-xs text-muted-foreground">At least 8 characters.</p>}
         </div>
 
         <Button type="submit" className="h-11 w-full" disabled={pending !== null}>
-          {pending === "email" ? <LoaderCircle className="animate-spin" /> : null}
+          {pending === "email" && <LoaderCircle className="animate-spin" />}
           {copy.submit}
-          {pending !== "email" && <ArrowRight />}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 text-sm text-muted-foreground">
         {copy.switchText}{" "}
-        <Link href={copy.switchHref} className="font-medium text-cyan-300 hover:underline">
+        <Link href={copy.switchHref} className="font-medium text-primary hover:underline">
           {copy.switchLink}
         </Link>
       </p>
-      <p className="mt-4 text-center text-[11px] text-muted-foreground/70">Demo mode: any credentials will sign you in.</p>
-    </motion.div>
+      <p className="mt-8 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+        Demo mode: any email and password will sign you in.
+      </p>
+    </div>
   );
 }

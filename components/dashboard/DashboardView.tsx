@@ -1,51 +1,40 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { CircleCheck, Files, LoaderCircle, MessageSquareText, type LucideIcon } from "lucide-react";
 import { DocumentLibrary } from "@/components/dashboard/DocumentLibrary";
 import { UploadDropzone } from "@/components/dashboard/UploadDropzone";
 import { MOCK_USER } from "@/mock/site";
 import { useWorkspaceStore } from "@/store/workspace-store";
-
-function StatCard({ icon: Icon, label, value, hint, index }: { icon: LucideIcon; label: string; value: string; hint: string; index: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06 }}
-      className="glass rounded-2xl p-4"
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <Icon className="size-4 text-cyan-300/80" aria-hidden />
-      </div>
-      <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
-    </motion.div>
-  );
-}
 
 export function DashboardView() {
   const documents = useWorkspaceStore((state) => state.documents);
   const queriesToday = useWorkspaceStore((state) => state.queriesToday);
   const ready = documents.filter((doc) => doc.status === "ready").length;
   const processing = documents.length - ready;
-  const chunks = documents.reduce((total, doc) => total + doc.chunkCount, 0);
+  const passages = documents.reduce((total, doc) => total + doc.chunkCount, 0);
+
+  const stats = [
+    { label: "Documents", value: `${documents.length} of ${MOCK_USER.documentLimit}` },
+    { label: "Ready to ask", value: String(ready) },
+    { label: "Processing", value: String(processing) },
+    { label: "Passages indexed", value: passages.toLocaleString("en-US") },
+    { label: "Questions today", value: `${queriesToday} of ${MOCK_USER.dailyQueryLimit}` },
+  ];
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 lg:py-10">
-      <header>
-        <p className="font-mono text-xs tracking-[0.18em] text-cyan-300 uppercase">Dashboard</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Welcome back, {MOCK_USER.name.split(" ")[0]}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Upload documents, track indexing, and jump into a workspace to start asking questions.</p>
+    <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 lg:py-10">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-[28px] font-semibold tracking-[-0.025em]">Documents</h1>
+        <p className="text-[15px] text-muted-foreground">Upload files, then open one to start asking questions.</p>
       </header>
 
-      <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard index={0} icon={Files} label="Documents" value={`${documents.length}/${MOCK_USER.documentLimit}`} hint="Free plan limit" />
-        <StatCard index={1} icon={CircleCheck} label="Ready" value={String(ready)} hint={`${chunks.toLocaleString("en-US")} chunks indexed`} />
-        <StatCard index={2} icon={LoaderCircle} label="Processing" value={String(processing)} hint="Uploading or indexing" />
-        <StatCard index={3} icon={MessageSquareText} label="Queries today" value={String(queriesToday)} hint={`of ${MOCK_USER.dailyQueryLimit} daily`} />
-      </div>
+      <dl className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-5">
+        {stats.map((stat) => (
+          <div key={stat.label} className="bg-surface px-5 py-4 last:max-lg:col-span-2">
+            <dt className="text-[13px] text-muted-foreground">{stat.label}</dt>
+            <dd className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
 
       <div className="mt-8">
         <UploadDropzone />

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Bot, Check, Copy, ThumbsUp } from "lucide-react";
+import { Check, Copy, ThumbsUp } from "lucide-react";
+import { LogoMark } from "@/components/branding/Logo";
 import { CitedText, citationKey } from "@/components/workspace/CitedText";
 import { useTypewriter } from "@/hooks/use-typewriter";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ interface AssistantMessageProps {
 
 function sourceSnippet(doc: DocumentItem, citation: Citation): string {
   const text = doc.pages[citation.page - 1]?.paragraphs[citation.paragraph - 1] ?? "";
-  return text.length > 110 ? `${text.slice(0, 110).trimEnd()}…` : text;
+  return text.length > 120 ? `${text.slice(0, 120).trimEnd()}…` : text;
 }
 
 function uniqueCitations(citations: Citation[]): Citation[] {
@@ -57,19 +57,17 @@ export function AssistantMessage({ message, doc, activeKey, onCite, onStreamEnd,
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
-      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-linear-to-br from-cyan-400/20 to-violet-500/20 ring-1 ring-white/10">
-        <Bot className="size-4 text-cyan-200" aria-hidden />
-      </span>
+    <div className="flex gap-3">
+      <LogoMark size={26} className="mt-0.5" />
       <div className="min-w-0 flex-1">
-        <div className="rounded-2xl rounded-tl-md bg-white/4 px-4 py-3 text-sm leading-relaxed text-foreground/90 ring-1 ring-white/6">
+        <p className="text-[15px] leading-[1.7] text-foreground">
           <CitedText text={text} citations={message.citations} activeKey={activeKey} onCite={onCite} />
-          {!done && <span aria-hidden className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 animate-blink bg-cyan-300" />}
-        </div>
+          {!done && <span aria-hidden className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-blink bg-primary" />}
+        </p>
 
         {done && message.citations.length > 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="mt-2.5">
-            <p className="mb-1.5 font-mono text-[10px] tracking-[0.16em] text-muted-foreground/80 uppercase">Sources</p>
+          <div className="mt-3">
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">Sources</p>
             <ul className="grid gap-1.5">
               {uniqueCitations(message.citations).map((citation) => {
                 const key = citationKey(citation);
@@ -80,56 +78,56 @@ export function AssistantMessage({ message, doc, activeKey, onCite, onStreamEnd,
                       type="button"
                       onClick={() => onCite(citation)}
                       className={cn(
-                        "flex w-full items-start gap-2.5 rounded-xl border px-3 py-2 text-left text-xs transition-colors",
-                        isActive
-                          ? "border-cyan-300/50 bg-cyan-400/10"
-                          : "border-white/6 bg-white/2 hover:border-white/15 hover:bg-white/4",
+                        "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left transition-colors",
+                        isActive ? "border-marker-edge bg-marker-soft" : "border-border bg-surface hover:border-border-strong",
                       )}
                     >
-                      <span className="shrink-0 rounded-md bg-cyan-400/15 px-1.5 py-0.5 font-mono text-[10px] text-cyan-200">
-                        p.{citation.page} ¶{citation.paragraph}
+                      <span className="w-[74px] shrink-0 pt-px text-[12px] font-medium text-foreground">
+                        Page {citation.page}, ¶{citation.paragraph}
                       </span>
-                      <span className="line-clamp-2 text-muted-foreground">{sourceSnippet(doc, citation)}</span>
+                      <span className="line-clamp-2 font-serif text-[13.5px] leading-snug text-muted-foreground">
+                        {sourceSnippet(doc, citation)}
+                      </span>
                     </button>
                   </li>
                 );
               })}
             </ul>
-          </motion.div>
+          </div>
         )}
 
         {done && (
-          <div className="mt-1.5 flex gap-0.5">
+          <div className="mt-1.5 -ml-1.5 flex gap-0.5">
             <button
               type="button"
               onClick={copy}
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+              className="rounded-md p-1.5 text-subtle-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label={copied ? "Copied" : "Copy answer"}
             >
-              {copied ? <Check className="size-3.5 text-emerald-300" /> : <Copy className="size-3.5" />}
+              {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
             </button>
             <button
               type="button"
               onClick={() => setLiked((value) => !value)}
               aria-pressed={liked}
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-              aria-label="Helpful answer"
+              className="rounded-md p-1.5 text-subtle-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Mark answer as helpful"
             >
-              <ThumbsUp className={cn("size-3.5", liked && "fill-cyan-300/30 text-cyan-300")} />
+              <ThumbsUp className={cn("size-3.5", liked && "fill-primary/15 text-primary")} />
             </button>
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 export function UserMessage({ message }: { message: ChatMessage }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
-      <p className="max-w-[85%] rounded-2xl rounded-br-md bg-linear-to-br from-cyan-500/85 to-violet-600/85 px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-white shadow-lg shadow-cyan-950/30">
+    <div className="flex justify-end">
+      <p className="max-w-[85%] rounded-2xl rounded-br-[4px] bg-primary px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-white">
         {message.content}
       </p>
-    </motion.div>
+    </div>
   );
 }

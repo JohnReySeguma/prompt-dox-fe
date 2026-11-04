@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment } from "react";
-import { FileText } from "lucide-react";
 import type { Citation } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -16,26 +15,24 @@ interface CitationBadgeProps {
   className?: string;
 }
 
+/** A small highlighter-coloured tab that points at a page and paragraph. */
 export function CitationBadge({ citation, active = false, onClick, className }: CitationBadgeProps) {
   const label = `Page ${citation.page}, Para ${citation.paragraph}`;
+  const Comp = onClick ? "button" : "span";
   return (
-    <button
-      type="button"
-      onClick={() => onClick?.(citation)}
-      aria-pressed={active}
-      aria-label={`Show source: ${label}`}
+    <Comp
+      {...(onClick
+        ? { type: "button" as const, onClick: () => onClick(citation), "aria-pressed": active, "aria-label": `Show source: ${label}` }
+        : {})}
       className={cn(
-        "mx-0.5 inline-flex translate-y-[-1px] items-center gap-1 rounded-md border px-1.5 py-px align-middle font-mono text-[10.5px] font-medium leading-4 transition-all",
-        active
-          ? "border-cyan-300/70 bg-cyan-400/25 text-cyan-50 shadow-[0_0_14px_-2px] shadow-cyan-400/70"
-          : "border-cyan-400/30 bg-cyan-400/10 text-cyan-200 hover:border-cyan-300/60 hover:bg-cyan-400/20",
-        onClick ? "cursor-pointer" : "cursor-default",
+        "mx-0.5 inline-flex translate-y-[-1px] items-center rounded-[5px] border px-1.5 align-middle text-[11px] leading-[18px] font-medium whitespace-nowrap text-foreground transition-colors",
+        active ? "border-marker-edge bg-marker" : "border-marker-edge/60 bg-marker-soft",
+        onClick && "cursor-pointer hover:bg-marker",
         className,
       )}
     >
-      <FileText className="size-3" aria-hidden />
       {label}
-    </button>
+    </Comp>
   );
 }
 
@@ -62,12 +59,7 @@ export function CitedText({ text, citations, activeKey, onCite }: CitedTextProps
         const citation = citations[Number(match[1]) - 1];
         if (!citation) return null;
         return (
-          <CitationBadge
-            key={index}
-            citation={citation}
-            active={activeKey === citationKey(citation)}
-            onClick={onCite}
-          />
+          <CitationBadge key={index} citation={citation} active={activeKey === citationKey(citation)} onClick={onCite} />
         );
       })}
     </>

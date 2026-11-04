@@ -15,14 +15,11 @@ function Progress({ value, className, indicatorClassName, ...props }: ProgressPr
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clamped)}
-      className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-white/8", className)}
+      className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
       {...props}
     >
       <div
-        className={cn(
-          "h-full rounded-full bg-linear-to-r from-cyan-400 to-violet-500 transition-[width] duration-300 ease-out",
-          indicatorClassName,
-        )}
+        className={cn("h-full rounded-full bg-primary transition-[width] duration-300 ease-out", indicatorClassName)}
         style={{ width: `${clamped}%` }}
       />
     </div>

@@ -11,17 +11,14 @@ export const metadata: Metadata = {
 
 export default function PricingPage() {
   return (
-    <div className="pt-36">
-      <SectionHeading
-        eyebrow="Pricing"
-        title={
-          <>
-            Pay for answers, <span className="text-gradient">not for seats you don&apos;t use</span>
-          </>
-        }
-        description="Every plan includes source citations, streaming answers and all four document formats."
-        className="px-4"
-      />
+    <div className="pt-32">
+      <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
+        <SectionHeading
+          as="h1"
+          title="Pay for the documents you use"
+          description="Every plan includes source citations, streaming answers and all four file types."
+        />
+      </div>
       <PricingSection showHeading={false} />
       <Faq />
       <CtaSection />

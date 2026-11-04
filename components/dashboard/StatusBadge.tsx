@@ -6,14 +6,13 @@ export function StatusBadge({ doc }: { doc: Pick<DocumentItem, "status" | "progr
   switch (doc.status) {
     case "uploading":
       return (
-        <Badge variant="violet">
+        <Badge variant="primary">
           <CloudUpload aria-hidden /> Uploading {Math.round(doc.progress)}%
         </Badge>
       );
     case "indexing":
       return (
-        <Badge variant="cyan" className="relative overflow-hidden">
-          <span aria-hidden className="bg-shimmer absolute inset-0 animate-shimmer" />
+        <Badge variant="warning">
           <LoaderCircle className="animate-spin" aria-hidden /> Indexing…
         </Badge>
       );

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Bot, CornerDownLeft, Sparkles } from "lucide-react";
+import { ArrowUp } from "lucide-react";
+import { LogoMark } from "@/components/branding/Logo";
 import { AssistantMessage, UserMessage } from "@/components/workspace/ChatMessageBubble";
 import { TypingDots } from "@/components/workspace/TypingDots";
 import { Button } from "@/components/ui/button";
@@ -53,28 +53,26 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
   const onStreamEnd = useCallback((id: string) => completeMessage(doc.id, id), [completeMessage, doc.id]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col bg-surface">
       <div
         ref={scrollRef}
         onScroll={(event) => {
           const node = event.currentTarget;
           stickToBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
         }}
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6"
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7"
         aria-live="polite"
       >
         {messages.length === 0 && !thinking ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <span className="grid size-12 place-items-center rounded-2xl bg-linear-to-br from-cyan-400/20 to-violet-500/25 ring-1 ring-white/10">
-              <Sparkles className="size-5 text-cyan-200" aria-hidden />
-            </span>
-            <h2 className="mt-4 font-semibold">Ask anything about this document</h2>
-            <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-              Answers are grounded in <span className="text-foreground">{doc.name}</span> and cite the exact paragraph.
+          <div className="flex h-full flex-col items-start justify-end pb-4">
+            <LogoMark size={36} />
+            <h2 className="mt-4 text-xl font-semibold tracking-tight">What do you want to know?</h2>
+            <p className="mt-1 max-w-sm text-[15px] text-muted-foreground">
+              Answers come only from <span className="text-foreground">{doc.name}</span>, with a citation for every claim.
             </p>
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl space-y-6">
+          <div className="mx-auto max-w-2xl space-y-7">
             {messages.map((message) =>
               message.role === "user" ? (
                 <UserMessage key={message.id} message={message} />
@@ -90,23 +88,17 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
                 />
               ),
             )}
-            <AnimatePresence>
-              {thinking && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex gap-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-white/5 ring-1 ring-white/10">
-                    <Bot className="size-4 text-cyan-200" aria-hidden />
-                  </span>
-                  <div className="rounded-2xl rounded-tl-md bg-white/4 px-4 py-3 ring-1 ring-white/6">
-                    <TypingDots label={`Searching ${doc.chunkCount} chunks`} />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {thinking && (
+              <div className="flex items-center gap-3">
+                <LogoMark size={26} />
+                <TypingDots label={`Searching ${doc.chunkCount} passages`} />
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      <div className="border-t border-white/6 p-3 sm:p-4">
+      <div className="border-t border-border px-4 pt-3 pb-4 sm:px-6">
         {messages.length < 3 && (
           <div className="mx-auto mb-3 flex max-w-2xl flex-wrap gap-1.5">
             {suggestions.map((suggestion) => (
@@ -115,7 +107,7 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
                 type="button"
                 disabled={busy}
                 onClick={() => submit(suggestion)}
-                className="rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-cyan-400/40 hover:text-cyan-100 disabled:opacity-50"
+                className="rounded-lg border border-border px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft hover:text-primary disabled:opacity-50"
               >
                 {suggestion}
               </button>
@@ -127,7 +119,7 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
             event.preventDefault();
             submit(draft);
           }}
-          className="mx-auto flex max-w-2xl items-end gap-2 rounded-2xl bg-white/4 p-2 ring-1 ring-white/10 transition-shadow focus-within:ring-cyan-400/40 focus-within:shadow-[0_0_30px_-10px] focus-within:shadow-cyan-400/50"
+          className="mx-auto flex max-w-2xl items-end gap-2 rounded-xl border border-border-strong bg-surface p-2 transition-shadow focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15"
         >
           <label htmlFor="chat-input" className="sr-only">
             Ask a question
@@ -137,7 +129,7 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
             ref={textareaRef}
             rows={1}
             value={draft}
-            placeholder="Ask a question about this document…"
+            placeholder="Ask about this document"
             onChange={(event) => {
               setDraft(event.target.value);
               const node = event.target;
@@ -150,14 +142,14 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
                 submit(draft);
               }
             }}
-            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus-visible:outline-none"
+            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] outline-none placeholder:text-subtle-foreground focus-visible:outline-none"
           />
           <Button type="submit" size="icon" disabled={busy || !draft.trim()} aria-label="Send question">
             <ArrowUp />
           </Button>
         </form>
-        <p className="mx-auto mt-2 flex max-w-2xl items-center gap-1 text-[11px] text-muted-foreground/70">
-          <CornerDownLeft className="size-3" aria-hidden /> Enter to send · Shift + Enter for a new line · Responses are simulated
+        <p className="mx-auto mt-2 max-w-2xl text-xs text-subtle-foreground">
+          Enter sends, Shift + Enter adds a line. Answers in this prototype are simulated.
         </p>
       </div>
     </div>
