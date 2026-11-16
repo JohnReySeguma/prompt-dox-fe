@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { HeaderAccountActions } from "@/components/auth/AccountActions";
 import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,6 @@ const NAV = [
   { href: "/features", label: "Product" },
   { href: "/#how-it-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/dashboard", label: "Demo" },
 ];
 
 export function SiteHeader() {
@@ -42,14 +42,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/sign-up">Start free</Link>
-          </Button>
-        </div>
+        <HeaderAccountActions className="hidden md:flex" />
 
         <Button
           variant="ghost"
@@ -75,14 +68,7 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button asChild variant="secondary">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/sign-up">Start free</Link>
-            </Button>
-          </div>
+          <HeaderAccountActions className="mt-4 flex" onNavigate={() => setOpen(false)} />
         </nav>
       )}
     </header>

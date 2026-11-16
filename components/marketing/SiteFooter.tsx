@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FooterAccountLinks } from "@/components/auth/AccountActions";
 import { Logo } from "@/components/branding/Logo";
 
 const COLUMNS = [
@@ -7,17 +8,10 @@ const COLUMNS = [
     links: [
       { href: "/features", label: "Capabilities" },
       { href: "/pricing", label: "Pricing" },
-      { href: "/dashboard", label: "Demo workspace" },
     ],
   },
-  {
-    title: "Account",
-    links: [
-      { href: "/sign-in", label: "Sign in" },
-      { href: "/sign-up", label: "Create account" },
-      { href: "/profile", label: "Profile" },
-    ],
-  },
+  // Filled in on the client: depends on whether the visitor is signed in.
+  { title: "Account", links: [] },
   {
     title: "Help",
     links: [
@@ -27,6 +21,8 @@ const COLUMNS = [
     ],
   },
 ];
+
+const LINK_CLASS = "text-sm text-muted-foreground transition-colors hover:text-primary";
 
 export function SiteFooter() {
   return (
@@ -42,9 +38,10 @@ export function SiteFooter() {
           <div key={column.title}>
             <h3 className="text-sm font-semibold">{column.title}</h3>
             <ul className="mt-3 space-y-2">
+              {column.title === "Account" && <FooterAccountLinks linkClassName={LINK_CLASS} />}
               {column.links.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                  <Link href={link.href} className={LINK_CLASS}>
                     {link.label}
                   </Link>
                 </li>
@@ -54,7 +51,7 @@ export function SiteFooter() {
         ))}
       </div>
       <p className="mx-auto mt-12 max-w-[1180px] text-xs text-subtle-foreground">
-        © 2026 PromptDox. Interface prototype: all documents, answers and accounts are sample data.
+        © 2026 PromptDox. A portfolio project. The demo workspace uses sample documents.
       </p>
     </footer>
   );

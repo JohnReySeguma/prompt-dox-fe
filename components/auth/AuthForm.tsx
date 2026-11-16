@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { CircleAlert, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { TryDemoButton } from "@/components/auth/TryDemoButton";
 import { GoogleIcon } from "@/components/branding/GoogleIcon";
@@ -66,10 +66,28 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(() => urlErrorMessage(searchParams.get("error"), searchParams.get("code")));
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
+  const { data: session, status, update } = useSession();
+  const isDemo = Boolean(session?.user?.isDemo);
 
-  const finish = () => {
+  // Already signed in: nothing to do here. Demo visitors may stay, to sign in
+  // to or create a real account.
+  useEffect(() => {
+    if (status === "authenticated" && !isDemo && pending === null) router.replace(callbackUrl);
+  }, [status, isDemo, pending, router, callbackUrl]);
+
+  // The page stays alive (hidden) for the back button; don't come back mid-submit.
+  useLayoutEffect(
+    () => () => {
+      setPending(null);
+      setShowPassword(false);
+    },
+    [],
+  );
+
+  const finish = async () => {
+    // Load the new session into the app before it checks who is signed in.
+    await update();
     router.replace(callbackUrl);
-    router.refresh();
   };
 
   const signInWithGoogle = async () => {
@@ -101,7 +119,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const result = await signIn("credentials", { email, password, redirect: false });
         if (result?.error) throw new Error(credentialsMessage(result.code));
       }
-      finish();
+      await finish();
     } catch (error) {
       setPending(null);
       if (error instanceof ApiError && error.code === "validation_error") {
@@ -129,6 +147,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
     <div className="w-full max-w-[380px]">
       <h1 className="text-[28px] font-semibold tracking-[-0.025em]">{copy.title}</h1>
       <p className="mt-1.5 text-[15px] text-muted-foreground">{copy.subtitle}</p>
+      {isDemo && (
+        <p className="mt-4 rounded-lg bg-marker-soft px-3 py-2.5 text-[13px] leading-relaxed">
+          You&apos;re in the demo workspace. {mode === "sign-up" ? "Creating an account" : "Signing in"} leaves the demo; its
+          sample data isn&apos;t carried over.
+        </p>
+      )}
 
       <Button
         type="button"
@@ -225,7 +249,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {copy.switchLink}
         </Link>
       </p>
-      <div className="mt-8 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={isDemo ? "hidden" : "mt-8 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"}>
         <div>
           <p className="text-sm font-medium">Just looking around?</p>
           <p className="text-[13px] text-muted-foreground">Open a workspace with sample documents. No account needed.</p>

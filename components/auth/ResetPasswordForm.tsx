@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { CircleAlert, Eye, EyeOff, LinkIcon, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -29,6 +29,9 @@ export function ResetPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [serverFieldError, setServerFieldError] = useState<string | null>(null);
   const [linkInvalid, setLinkInvalid] = useState(false);
+
+  // Kept alive (hidden) for the back button after redirecting to sign-in; don't come back mid-submit.
+  useLayoutEffect(() => () => setPending(false), []);
 
   if (!token || linkInvalid) {
     return (

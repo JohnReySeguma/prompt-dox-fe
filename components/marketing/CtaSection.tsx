@@ -1,6 +1,5 @@
-import Link from "next/link";
+import { UploadCta } from "@/components/auth/AccountActions";
 import { TryDemoButton } from "@/components/auth/TryDemoButton";
-import { Button } from "@/components/ui/button";
 
 export function CtaSection() {
   return (
@@ -15,9 +14,7 @@ export function CtaSection() {
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
-          <Button asChild size="lg" className="bg-white text-foreground shadow-none hover:bg-white/90">
-            <Link href="/sign-up">Upload a document</Link>
-          </Button>
+          <UploadCta size="lg" className="bg-white text-foreground shadow-none hover:bg-white/90" />
           <TryDemoButton size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" />
         </div>
       </div>

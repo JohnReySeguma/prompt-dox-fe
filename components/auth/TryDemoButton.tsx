@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useLayoutEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { useToast } from "@/store/toast-store";
@@ -14,11 +15,25 @@ interface TryDemoButtonProps extends Omit<ButtonProps, "onClick" | "asChild"> {
 /**
  * Signs the visitor into a fresh, private demo workspace with sample documents.
  * The `demo` Auth.js provider calls `POST /v1/auth/demo` on the server.
+ * Anyone already signed in just goes back to their workspace: no new demo.
  */
 export function TryDemoButton({ label = "Try the demo", disabled, children, ...props }: TryDemoButtonProps) {
   const router = useRouter();
   const toast = useToast();
+  const { status, update } = useSession();
   const [pending, setPending] = useState(false);
+
+  // Next.js keeps the previous page alive (hidden) for the back button, so a
+  // finished sign-in would otherwise come back as a spinning button.
+  useLayoutEffect(() => () => setPending(false), []);
+
+  if (status === "authenticated") {
+    return (
+      <Button asChild disabled={disabled} {...props}>
+        <Link href="/dashboard">Open your workspace</Link>
+      </Button>
+    );
+  }
 
   const start = async () => {
     setPending(true);
@@ -32,16 +47,23 @@ export function TryDemoButton({ label = "Try the demo", disabled, children, ...p
       });
       return;
     }
+    // Load the new session into the app before it checks who is signed in.
+    await update();
     toast({
       title: "You're in the demo workspace",
       description: "Sample documents are ready to ask about. Nothing you do here affects anyone else.",
     });
     router.push("/dashboard");
-    router.refresh();
   };
 
   return (
-    <Button type="button" onClick={() => void start()} disabled={pending || disabled} aria-busy={pending} {...props}>
+    <Button
+      type="button"
+      onClick={() => void start()}
+      disabled={pending || disabled || status === "loading"}
+      aria-busy={pending}
+      {...props}
+    >
       {pending && <LoaderCircle className="animate-spin" />}
       {children ?? label}
     </Button>

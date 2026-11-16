@@ -1,6 +1,5 @@
-import Link from "next/link";
+import { UploadCta } from "@/components/auth/AccountActions";
 import { TryDemoButton } from "@/components/auth/TryDemoButton";
-import { Button } from "@/components/ui/button";
 import { HeroDocument } from "@/components/marketing/HeroDocument";
 
 export function Hero() {
@@ -17,9 +16,7 @@ export function Hero() {
             used, so you can check it before you quote it.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href="/sign-up">Upload a document</Link>
-            </Button>
+            <UploadCta size="lg" />
             <TryDemoButton size="lg" variant="secondary" />
           </div>
           <p className="mt-5 text-sm text-subtle-foreground">The demo opens a workspace with sample documents, no sign-up needed. Works with PDF, Word, Markdown and text.</p>
