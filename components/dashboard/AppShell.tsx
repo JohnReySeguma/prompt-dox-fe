@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileStack, LogOut, Menu, MessagesSquare, UserRound, X, type LucideIcon } from "lucide-react";
+import { FileStack, FlaskConical, LoaderCircle, LogOut, Menu, MessagesSquare, UserRound, X, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { UpgradeDialog } from "@/components/billing/UpgradeDialog";
-import { MOCK_USER, PLAN_LIMITS } from "@/mock/site";
-import { usePlanLimits, useWorkspaceStore } from "@/store/workspace-store";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useSignOut } from "@/hooks/use-sign-out";
+import { useDocuments, useUsage } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -21,10 +24,11 @@ interface NavItem {
 }
 
 function useNavItems(): NavItem[] {
-  const firstReady = useWorkspaceStore((state) => state.documents.find((doc) => doc.status === "ready")?.id);
+  const { data: documents } = useDocuments();
+  const firstReady = documents?.find((doc) => doc.status === "ready")?.id;
   return [
     { href: "/dashboard", match: "/dashboard", label: "Documents", icon: FileStack },
-    { href: `/workspace/${firstReady ?? "q3-financial-report"}`, match: "/workspace", label: "Workspace", icon: MessagesSquare },
+    { href: firstReady ? `/workspace/${firstReady}` : "/dashboard", match: "/workspace", label: "Workspace", icon: MessagesSquare },
     { href: "/profile", match: "/profile", label: "Profile & usage", icon: UserRound },
   ];
 }
@@ -32,8 +36,10 @@ function useNavItems(): NavItem[] {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const items = useNavItems();
-  const docCount = useWorkspaceStore((state) => state.documents.length);
-  const limits = usePlanLimits();
+  const user = useCurrentUser();
+  const { data: usage } = useUsage();
+  const { signOut, pending: signingOut } = useSignOut();
+  const docLimit = usage?.documents.limit ?? null;
 
   return (
     <div className="flex h-full flex-col">
@@ -41,7 +47,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Logo height={28} priority />
       </Link>
 
-      <p className="mt-8 px-3 text-xs font-medium text-subtle-foreground">{MOCK_USER.workspace}</p>
+      <p className="mt-8 truncate px-3 text-xs font-medium text-subtle-foreground">{user?.workspace ?? " "}</p>
       <nav className="mt-2 space-y-0.5" aria-label="App">
         {items.map((item) => {
           const active = pathname.startsWith(item.match);
@@ -64,41 +70,43 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-3">
-        <div className="rounded-lg border border-border p-4">
-          <div className="flex items-center justify-between text-[13px]">
-            <span className="text-muted-foreground">Documents</span>
-            <span className="font-medium tabular-nums">
-              {docCount} of {limits.documents}
-            </span>
+        {usage ? (
+          <div className="rounded-lg border border-border p-4">
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-muted-foreground">Documents</span>
+              <span className="font-medium tabular-nums">
+                {usage.documents.used} of {docLimit ?? "Unlimited"}
+              </span>
+            </div>
+            <Progress value={docLimit ? (usage.documents.used / docLimit) * 100 : 0} className="mt-2" />
+            {usage.plan === "free" ? (
+              <UpgradeDialog>
+                <button type="button" className="mt-3 text-[13px] font-medium text-primary hover:underline">
+                  Upgrade for more documents
+                </button>
+              </UpgradeDialog>
+            ) : (
+              <p className="mt-3 text-[13px] text-muted-foreground">
+                <span className="rounded bg-marker px-1.5 py-0.5 font-medium text-foreground">Pro</span> plan
+              </p>
+            )}
           </div>
-          <Progress value={(docCount / limits.documents) * 100} className="mt-2" />
-          {limits.plan === "free" ? (
-            <UpgradeDialog>
-              <button type="button" className="mt-3 text-[13px] font-medium text-primary hover:underline">
-                Upgrade for {PLAN_LIMITS.pro.documents} documents
-              </button>
-            </UpgradeDialog>
-          ) : (
-            <p className="mt-3 text-[13px] text-muted-foreground">
-              <span className="rounded bg-marker px-1.5 py-0.5 font-medium text-foreground">Pro</span> plan, this session
-            </p>
-          )}
-        </div>
+        ) : (
+          <Skeleton className="h-[106px] rounded-lg" />
+        )}
 
         <div className="flex items-center gap-3 border-t border-border px-1 pt-3">
           <Link href="/profile" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-white">
-              {MOCK_USER.initials}
+              {user?.initials}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">{MOCK_USER.name}</span>
-              <span className="block truncate text-xs text-muted-foreground">{MOCK_USER.email}</span>
+              <span className="block truncate text-sm font-medium">{user?.name}</span>
+              <span className="block truncate text-xs text-muted-foreground">{user?.email}</span>
             </span>
           </Link>
-          <Button asChild variant="ghost" size="icon-sm" aria-label="Sign out">
-            <Link href="/sign-in">
-              <LogOut />
-            </Link>
+          <Button variant="ghost" size="icon-sm" aria-label="Sign out" onClick={() => void signOut()} disabled={signingOut}>
+            {signingOut ? <LoaderCircle className="animate-spin" /> : <LogOut />}
           </Button>
         </div>
       </div>
@@ -106,8 +114,52 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** Shown to demo visitors on every app page. */
+function DemoBanner() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-marker-edge/50 bg-marker-soft px-4 py-2 text-center text-[13px]">
+      <span className="inline-flex items-center gap-1.5 font-medium">
+        <FlaskConical className="size-3.5" aria-hidden /> Demo workspace — resets after 24 hours.
+      </span>
+      <Link href="/sign-up" className="font-medium text-primary hover:underline">
+        Create a free account to keep your work
+      </Link>
+    </div>
+  );
+}
+
+export function ShellSkeleton() {
+  return (
+    <div className="flex min-h-screen" aria-busy="true" aria-label="Loading your workspace">
+      <aside className="hidden w-64 shrink-0 border-r border-border bg-surface p-4 lg:block">
+        <Logo height={28} priority />
+        <div className="mt-10 space-y-2">
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+        </div>
+      </aside>
+      <div className="flex-1 px-5 py-10 sm:px-8">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="mt-3 h-4 w-72" />
+        <Skeleton className="mt-8 h-24" />
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { status } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const user = useCurrentUser();
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace(`/sign-in?callbackUrl=${encodeURIComponent(pathname)}`);
+  }, [status, router, pathname]);
+
+  if (status !== "authenticated") return <ShellSkeleton />;
 
   return (
     <div className="flex min-h-screen">
@@ -157,7 +209,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      <div className="flex min-w-0 flex-1 flex-col pt-14 lg:pt-0">{children}</div>
+      {/* The workspace is a fixed-height split view; other pages scroll the window. */}
+      <div className={cn("flex min-w-0 flex-1 flex-col pt-14 lg:pt-0", pathname.startsWith("/workspace") && "h-dvh")}>
+        {user?.isDemo && <DemoBanner />}
+        {children}
+      </div>
     </div>
   );
 }

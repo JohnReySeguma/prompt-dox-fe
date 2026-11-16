@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { CircleAlert, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { TryDemoButton } from "@/components/auth/TryDemoButton";
 import { GoogleIcon } from "@/components/branding/GoogleIcon";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { MOCK_USER } from "@/mock/site";
+import { register } from "@/lib/api/auth";
+import { ApiError, errorMessage } from "@/lib/api/errors";
 
 type Mode = "sign-in" | "sign-up";
+type Field = "name" | "email" | "password";
 
 const COPY: Record<Mode, { title: string; subtitle: string; submit: string; switchText: string; switchLink: string; switchHref: string }> = {
   "sign-in": {
@@ -31,17 +34,96 @@ const COPY: Record<Mode, { title: string; subtitle: string; submit: string; swit
   },
 };
 
-/** Pure UI auth form: any submit "succeeds" after a short fake delay. */
+/** Only same-site paths, so a crafted link can't bounce users elsewhere after sign-in. */
+export function safeCallbackUrl(value: string | null): string {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/dashboard";
+}
+
+/** Errors Auth.js reports back on the URL (`/sign-in?error=...`). */
+function urlErrorMessage(error: string | null, code: string | null): string | null {
+  if (!error) return null;
+  if (error === "GoogleSignIn") {
+    return code === "invalid_google_token"
+      ? "Google couldn't confirm that sign-in. Please try again."
+      : "We couldn't sign you in with Google. Please try again, or use your email.";
+  }
+  if (error === "AccessDenied") return "That sign-in was cancelled.";
+  return "We couldn't sign you in. Please try again.";
+}
+
+/** Auth.js puts our backend's message in `code`; its own default is "credentials". */
+function credentialsMessage(code: string | undefined): string {
+  return code && code !== "credentials" ? code : "We couldn't sign you in. Please try again.";
+}
+
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const copy = COPY[mode];
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
+
   const [pending, setPending] = useState<"google" | "email" | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState<string | null>(() => urlErrorMessage(searchParams.get("error"), searchParams.get("code")));
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
 
-  const fakeSignIn = (method: "google" | "email") => {
-    setPending(method);
-    setTimeout(() => router.push("/dashboard"), 1000);
+  const finish = () => {
+    router.replace(callbackUrl);
+    router.refresh();
   };
+
+  const signInWithGoogle = async () => {
+    setPending("google");
+    setFormError(null);
+    // Redirects to Google; the backend exchange happens in the Auth.js `signIn` callback.
+    await signIn("google", { redirectTo: callbackUrl });
+  };
+
+  const submit = async (form: FormData) => {
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    setPending("email");
+    setFormError(null);
+    setFieldErrors({});
+
+    try {
+      if (mode === "sign-up") {
+        const name = String(form.get("name") ?? "").trim();
+        const session = await register({ name, email, password });
+        const result = await signIn("session", {
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+          expiresIn: String(session.expiresIn),
+          redirect: false,
+        });
+        if (result?.error) throw new Error(credentialsMessage(result.code));
+      } else {
+        const result = await signIn("credentials", { email, password, redirect: false });
+        if (result?.error) throw new Error(credentialsMessage(result.code));
+      }
+      finish();
+    } catch (error) {
+      setPending(null);
+      if (error instanceof ApiError && error.code === "validation_error") {
+        const fields = error.fieldErrors as Partial<Record<Field, string>>;
+        setFieldErrors(fields);
+        if (!Object.keys(fields).length) setFormError(error.message);
+        return;
+      }
+      setFormError(error instanceof ApiError ? errorMessage(error) : error instanceof Error ? error.message : errorMessage(error));
+    }
+  };
+
+  const fieldProps = (field: Field) => ({
+    "aria-invalid": Boolean(fieldErrors[field]),
+    "aria-describedby": fieldErrors[field] ? `${field}-error` : undefined,
+  });
+  const fieldError = (field: Field) =>
+    fieldErrors[field] ? (
+      <p id={`${field}-error`} className="text-xs text-destructive">
+        {fieldErrors[field]}
+      </p>
+    ) : null;
 
   return (
     <div className="w-full max-w-[380px]">
@@ -53,7 +135,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         variant="secondary"
         className="mt-8 h-11 w-full"
         disabled={pending !== null}
-        onClick={() => fakeSignIn("google")}
+        onClick={() => void signInWithGoogle()}
       >
         {pending === "google" ? <LoaderCircle className="animate-spin" /> : <GoogleIcon className="size-4" />}
         Continue with Google
@@ -69,13 +151,20 @@ export function AuthForm({ mode }: { mode: Mode }) {
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
-          fakeSignIn("email");
+          void submit(new FormData(event.currentTarget));
         }}
       >
+        {formError && (
+          <p role="alert" className="flex items-start gap-2 rounded-lg border border-[#f3c9c2] bg-[#fdf0ee] px-3 py-2.5 text-sm text-destructive">
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {formError}
+          </p>
+        )}
         {mode === "sign-up" && (
           <div className="space-y-1.5">
             <Label htmlFor="name">Full name</Label>
-            <Input id="name" name="name" autoComplete="name" className="h-11" required />
+            <Input id="name" name="name" autoComplete="name" maxLength={80} className="h-11" required {...fieldProps("name")} />
+            {fieldError("name")}
           </div>
         )}
         <div className="space-y-1.5">
@@ -86,10 +175,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
             type="email"
             autoComplete="email"
             placeholder="you@company.com"
-            defaultValue={mode === "sign-in" ? MOCK_USER.email : undefined}
             className="h-11"
             required
+            {...fieldProps("email")}
           />
+          {fieldError("email")}
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
@@ -106,10 +196,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
               name="password"
               type={showPassword ? "text" : "password"}
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-              defaultValue={mode === "sign-in" ? "demo-password" : undefined}
-              minLength={8}
+              minLength={mode === "sign-up" ? 8 : undefined}
               className="h-11 pr-10"
               required
+              {...fieldProps("password")}
             />
             <button
               type="button"
@@ -120,7 +210,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
-          {mode === "sign-up" && <p className="text-xs text-muted-foreground">At least 8 characters.</p>}
+          {fieldError("password") ?? (mode === "sign-up" && <p className="text-xs text-muted-foreground">At least 8 characters.</p>)}
         </div>
 
         <Button type="submit" className="h-11 w-full" disabled={pending !== null}>
@@ -142,7 +232,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </div>
         <TryDemoButton variant="secondary" size="sm" disabled={pending !== null} className="shrink-0" />
       </div>
-      <p className="mt-3 text-xs text-subtle-foreground">Prototype: any email and password will sign you in.</p>
     </div>
   );
 }

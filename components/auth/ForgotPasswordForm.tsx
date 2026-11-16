@@ -2,17 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, LoaderCircle, MailCheck } from "lucide-react";
+import { ArrowLeft, CircleAlert, LoaderCircle, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { forgotPassword } from "@/lib/api/auth";
+import { ApiError, errorMessage } from "@/lib/api/errors";
 
 /**
- * Request a password-reset link. Mocked for now; will call
- * `POST /v1/auth/password/forgot` (API_CONTRACT.md §4.1), which always answers 204.
+ * Request a password-reset link (`POST /v1/auth/password/forgot`). The API
+ * answers 204 whether or not the email has an account, so the confirmation
+ * never reveals which addresses are registered.
  */
 export function ForgotPasswordForm() {
   const [pending, setPending] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (sentTo) {
     return (
@@ -22,15 +26,11 @@ export function ForgotPasswordForm() {
         </span>
         <h1 className="mt-5 text-[28px] font-semibold tracking-[-0.025em]">Check your email</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-          If an account exists for <span className="font-medium text-foreground">{sentTo}</span>, we sent a link to reset
-          your password. It expires in 1 hour.
+          If an account exists for <span className="font-medium text-foreground">{sentTo}</span>, we&apos;ve emailed a reset
+          link. It expires in 1 hour.
         </p>
         <p className="mt-6 rounded-lg bg-muted px-3 py-2.5 text-[13px] leading-relaxed text-muted-foreground">
-          This prototype doesn&apos;t send email.{" "}
-          <Link href="/reset-password?token=demo-reset-token" className="font-medium text-primary hover:underline">
-            Open the reset page
-          </Link>{" "}
-          to see the next step.
+          Nothing arrived? Check your spam folder, or send the link again in a few minutes.
         </p>
         <div className="mt-8 flex flex-col gap-3">
           <Button variant="secondary" onClick={() => setSentTo(null)}>
@@ -57,12 +57,25 @@ export function ForgotPasswordForm() {
           event.preventDefault();
           const email = String(new FormData(event.currentTarget).get("email") ?? "").trim();
           setPending(true);
-          setTimeout(() => {
-            setPending(false);
-            setSentTo(email);
-          }, 800);
+          setError(null);
+          forgotPassword(email)
+            .then(() => setSentTo(email))
+            .catch((caught: unknown) =>
+              setError(
+                caught instanceof ApiError && caught.code === "validation_error"
+                  ? (caught.fieldErrors.email ?? caught.message)
+                  : errorMessage(caught),
+              ),
+            )
+            .finally(() => setPending(false));
         }}
       >
+        {error && (
+          <p role="alert" className="flex items-start gap-2 rounded-lg border border-[#f3c9c2] bg-[#fdf0ee] px-3 py-2.5 text-sm text-destructive">
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {error}
+          </p>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="forgot-email">Work email</Label>
           <Input

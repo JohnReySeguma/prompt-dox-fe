@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Check } from "lucide-react";
-import { PRICING_PLANS } from "@/mock/site";
+import { PRICING_PLANS } from "@/content/pricing";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { SalesDialog } from "@/components/billing/SalesDialog";
 import { UpgradeDialog } from "@/components/billing/UpgradeDialog";
 import { Button } from "@/components/ui/button";
-import { useWorkspaceStore } from "@/store/workspace-store";
+import { useSession } from "next-auth/react";
+import { useUsage } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { BillingCycle, PricingPlan } from "@/types";
 
@@ -57,17 +58,20 @@ function Price({ plan, cycle }: { plan: PricingPlan; cycle: BillingCycle }) {
 }
 
 function PlanAction({ plan, cycle }: { plan: PricingPlan; cycle: BillingCycle }) {
-  const currentPlan = useWorkspaceStore((state) => state.plan);
+  const { status } = useSession();
+  const { data: usage } = useUsage();
+  const signedIn = status === "authenticated";
+  const currentPlan = usage?.plan;
   const variant = plan.highlighted ? "default" : "secondary";
 
-  if (plan.id === currentPlan) {
+  if (signedIn && plan.id === currentPlan) {
     return (
       <Button variant="secondary" className="w-full" disabled>
         Your current plan
       </Button>
     );
   }
-  if (plan.id === "pro") {
+  if (plan.id === "pro" && signedIn) {
     return (
       <UpgradeDialog cycle={cycle}>
         <Button variant={variant} className="w-full">
@@ -83,6 +87,13 @@ function PlanAction({ plan, cycle }: { plan: PricingPlan; cycle: BillingCycle })
           {plan.cta}
         </Button>
       </SalesDialog>
+    );
+  }
+  if (signedIn) {
+    return (
+      <Button asChild variant={variant} className="w-full">
+        <Link href="/profile">Manage your plan</Link>
+      </Button>
     );
   }
   return (

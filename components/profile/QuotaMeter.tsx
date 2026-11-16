@@ -20,7 +20,7 @@ export function QuotaMeter({ label, used, limit, unit, hint }: QuotaMeterProps) 
       <div className="flex items-baseline justify-between gap-4">
         <h3 className="text-[15px] font-medium">{label}</h3>
         <span className="text-xs text-muted-foreground tabular-nums">
-          {limit === null ? "No limit" : `${Math.round(ratio * 100)}% used`}
+          {limit === null ? "Unlimited" : `${Math.round(ratio * 100)}% used`}
         </span>
       </div>
       <p className="mt-3 tabular-nums" aria-label={limit === null ? `${used} ${unit}` : `${used} of ${limit} ${unit}`}>

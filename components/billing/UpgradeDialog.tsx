@@ -1,7 +1,8 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowRight, Info } from "lucide-react";
+import { ArrowRight, CircleAlert, Info, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,20 +14,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PLAN_LIMITS, PRICING_PLANS } from "@/mock/site";
+import { PRICING_PLANS } from "@/content/pricing";
+import { errorMessage } from "@/lib/api/errors";
+import { switchPlan } from "@/lib/api/me";
+import { queryKeys, useUsage } from "@/lib/queries";
 import { useToast } from "@/store/toast-store";
-import { useWorkspaceStore } from "@/store/workspace-store";
-import type { BillingCycle } from "@/types";
+import type { BillingCycle, Usage } from "@/types";
 
 const PRO = PRICING_PLANS.find((plan) => plan.id === "pro")!;
 
-function formatQueries(limit: number | null): string {
-  return limit === null ? "Unlimited" : String(limit);
-}
-
 const CHANGES = [
-  { label: "Documents", from: String(PLAN_LIMITS.free.documents), to: String(PLAN_LIMITS.pro.documents) },
-  { label: "Questions per day", from: formatQueries(PLAN_LIMITS.free.dailyQueries), to: formatQueries(PLAN_LIMITS.pro.dailyQueries) },
+  { label: "Documents", from: "10", to: "500" },
+  { label: "Questions per day", from: "100", to: "Unlimited" },
   { label: "Shared workspaces", from: "None", to: "Up to 5" },
 ];
 
@@ -37,29 +36,40 @@ interface UpgradeDialogProps {
 }
 
 /**
- * Demo checkout: confirming switches the in-memory plan to Pro and says plainly
- * that no payment was taken. There is deliberately no card form.
+ * Demo checkout: confirming calls `POST /v1/me/plan` and says plainly that no
+ * payment was taken. There is deliberately no card form.
  */
 export function UpgradeDialog({ children, cycle = "yearly" }: UpgradeDialogProps) {
-  const plan = useWorkspaceStore((state) => state.plan);
-  const setPlan = useWorkspaceStore((state) => state.setPlan);
+  const queryClient = useQueryClient();
+  const { data: usage } = useUsage();
+  const plan = usage?.plan ?? "free";
   const toast = useToast();
   const [open, setOpen] = useState(false);
+
+  const upgrade = useMutation({
+    mutationFn: () => switchPlan("pro"),
+    onSuccess: (next) => {
+      queryClient.setQueryData<Usage>(queryKeys.usage, next);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me });
+      setOpen(false);
+      toast({
+        title: "You're on Pro",
+        description: "Checkout is turned off in this demo, so no payment was taken.",
+      });
+    },
+  });
 
   const price = cycle === "yearly" ? PRO.yearlyPrice : PRO.monthlyPrice;
   const billing = cycle === "yearly" ? "per user / month, billed yearly" : "per user / month";
 
-  const confirm = () => {
-    setPlan("pro");
-    setOpen(false);
-    toast({
-      title: "Switched to Pro for this session",
-      description: "Checkout is turned off in this demo, so no payment was taken.",
-    });
-  };
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) upgrade.reset();
+      }}
+    >
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-[440px]">
         {plan === "pro" ? (
@@ -67,7 +77,7 @@ export function UpgradeDialog({ children, cycle = "yearly" }: UpgradeDialogProps
             <DialogHeader>
               <DialogTitle>You&apos;re on Pro</DialogTitle>
               <DialogDescription>
-                Pro is active for this session. You can switch back to Free from your profile page.
+                Pro is active on your workspace. You can switch back to Free from your profile page.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -118,16 +128,22 @@ export function UpgradeDialog({ children, cycle = "yearly" }: UpgradeDialogProps
 
             <p className="mt-5 flex gap-2.5 rounded-lg bg-muted px-3 py-2.5 text-[13px] leading-relaxed text-muted-foreground">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-              Checkout is turned off in this demo. Switching changes your plan for this session only, and no payment
-              is taken.
+              Checkout is turned off in this demo. Switching changes your plan right away, and no payment is taken.
             </p>
+            {upgrade.isError && (
+              <p role="alert" className="mt-3 flex gap-2.5 text-[13px] leading-relaxed text-destructive">
+                <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {errorMessage(upgrade.error)}
+              </p>
+            )}
 
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="secondary">Cancel</Button>
               </DialogClose>
-              <Button onClick={confirm}>
-                Switch to Pro <ArrowRight />
+              <Button onClick={() => upgrade.mutate()} disabled={upgrade.isPending}>
+                {upgrade.isPending && <LoaderCircle className="animate-spin" />}
+                Switch to Pro {!upgrade.isPending && <ArrowRight />}
               </Button>
             </DialogFooter>
           </>

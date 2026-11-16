@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Newsreader, Schibsted_Grotesk } from "next/font/google";
+import { AppProviders } from "@/components/providers/AppProviders";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${schibsted.variable} ${newsreader.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
-        {children}
+        <AppProviders>{children}</AppProviders>
         <Toaster />
       </body>
     </html>
