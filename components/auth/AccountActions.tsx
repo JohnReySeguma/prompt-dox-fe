@@ -84,3 +84,15 @@ export function FooterAccountLinks({ linkClassName }: { linkClassName?: string }
     </>
   );
 }
+
+/** The note under the hero buttons; the demo part only matters to signed-out visitors. */
+export function HeroNote({ className }: { className?: string }) {
+  const { status } = useSession();
+  return (
+    <p className={className}>
+      {status === "authenticated"
+        ? "Works with PDF, Word, Markdown and text."
+        : "The demo shows sample documents, no sign-up needed. Works with PDF, Word, Markdown and text."}
+    </p>
+  );
+}

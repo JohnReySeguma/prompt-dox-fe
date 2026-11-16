@@ -29,11 +29,11 @@ npm run lint
 npm run gen:api   # regenerate types/api.ts from the running backend's OpenAPI spec
 ```
 
-No account? Click **Try the demo**: it opens a private workspace with seven sample documents that is deleted after 24 hours.
+No account? **Try the demo** opens `/demo`: seven sample documents with pre-written answers and working citations. It runs entirely in the browser, so it never creates an account or calls the API.
 
 ## How it fits together
 
-- **Auth** (`auth.ts`): Auth.js keeps the backend's access and refresh tokens in its encrypted JWT cookie. Providers: email/password (`POST /v1/auth/login`), Google (Google's ID token is traded at `POST /v1/auth/google`), demo (`POST /v1/auth/demo`), and `session`, which adopts the session returned by `POST /v1/auth/register`. The access token is refreshed about a minute before it expires. Refresh tokens are single use, so concurrent refreshes share one rotation. Only the access token reaches the browser.
+- **Auth** (`auth.ts`): Auth.js keeps the backend's access and refresh tokens in its encrypted JWT cookie. Only Google and email accounts sign in. Providers: email/password (`POST /v1/auth/login`), Google (Google's ID token is traded at `POST /v1/auth/google`), and `session`, which adopts the session returned by `POST /v1/auth/register`. The access token is refreshed about a minute before it expires. Refresh tokens are single use, so concurrent refreshes share one rotation. Only the access token reaches the browser.
 - **API client** (`lib/api/`): `apiFetch<T>()` adds the base URL and Bearer token, turns the error envelope into an `ApiError`, refreshes once on `token_expired`, and signs out on any other 401. Endpoint modules: `auth`, `me`, `documents`, `chat`.
 - **Data** (`lib/queries.ts`): TanStack Query caches the documents, pages, messages, user, usage and settings. The document list is polled every 3 s while anything is indexing; there is no event stream.
 - **Uploads** (`hooks/use-upload.ts`): checked in the browser first, then sent with `XMLHttpRequest` so progress can be shown. The `uploading` status exists only in the browser.
@@ -45,7 +45,8 @@ No account? Click **Try the demo**: it opens a private workspace with seven samp
 | --- | --- |
 | `/` | Landing page with a self-playing hero, features, how it works and pricing |
 | `/features`, `/pricing` | Marketing detail pages |
-| `/sign-in`, `/sign-up` | Email/password, Google, and Try the demo |
+| `/sign-in`, `/sign-up` | Email/password and Google. Signed-in users are sent to the dashboard |
+| `/demo`, `/demo/[docId]` | Public, read-only demo with sample documents (no account, no API calls) |
 | `/forgot-password`, `/reset-password?token=` | Password reset via the emailed link |
 | `/dashboard` | Upload with progress, then indexing to ready by polling. Library with search, filter, rename and delete |
 | `/workspace/[docId]` | Document pages and chat side by side. Citations scroll to and highlight the cited paragraph |
@@ -57,8 +58,8 @@ No account? Click **Try the demo**: it opens a private workspace with seven samp
 app/            (marketing) · (auth) · (dashboard) route groups, api/auth (Auth.js)
 auth.ts         Auth.js configuration
 components/     branding · ui · marketing · dashboard · workspace · auth · profile · billing · providers
-content/        static marketing copy (pricing, hero animation script)
-hooks/          useChat (SSE), useUpload, useCurrentUser, useSignOut, useTypewriter (hero only)
+content/        static copy: pricing, hero animation script, demo documents and answers
+hooks/          useChat (SSE), useDemoChat, useUpload, useCurrentUser, useSignOut, useTypewriter (hero only)
 lib/api/        typed API client and endpoint modules
 lib/queries.ts  TanStack Query hooks and keys
 store/          Zustand: in-flight uploads, toasts

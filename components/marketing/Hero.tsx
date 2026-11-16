@@ -1,4 +1,4 @@
-import { UploadCta } from "@/components/auth/AccountActions";
+import { HeroNote, UploadCta } from "@/components/auth/AccountActions";
 import { TryDemoButton } from "@/components/auth/TryDemoButton";
 import { HeroDocument } from "@/components/marketing/HeroDocument";
 
@@ -19,7 +19,7 @@ export function Hero() {
             <UploadCta size="lg" />
             <TryDemoButton size="lg" variant="secondary" />
           </div>
-          <p className="mt-5 text-sm text-subtle-foreground">The demo opens a workspace with sample documents, no sign-up needed. Works with PDF, Word, Markdown and text.</p>
+          <HeroNote className="mt-5 text-sm text-subtle-foreground" />
         </div>
 
         <HeroDocument />

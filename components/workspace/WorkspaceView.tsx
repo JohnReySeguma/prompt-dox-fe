@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { ChatPanel } from "@/components/workspace/ChatPanel";
 import { citationKey } from "@/components/workspace/CitedText";
 import { DocumentViewer, type ActiveCitation } from "@/components/workspace/DocumentViewer";
+import { WorkspaceSplit, type MobileTab } from "@/components/workspace/WorkspaceSplit";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearMessages } from "@/lib/api/chat";
@@ -16,8 +17,6 @@ import { queryKeys, useDocument, useMessages, usePages } from "@/lib/queries";
 import { useToast } from "@/store/toast-store";
 import { cn, formatBytes } from "@/lib/utils";
 import type { ChatMessage, Citation } from "@/types";
-
-type MobileTab = "document" | "chat";
 
 export function WorkspaceSkeleton() {
   return (
@@ -152,35 +151,10 @@ export function WorkspaceView({ docId }: { docId: string }) {
         )}
       </header>
 
-      {/* Mobile pane switcher */}
-      <div className="flex border-b border-border bg-surface lg:hidden" role="tablist" aria-label="Workspace panes">
-        {(
-          [
-            { id: "document", label: "Document" },
-            { id: "chat", label: "Conversation" },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={mobileTab === tab.id}
-            onClick={() => setMobileTab(tab.id)}
-            className={cn(
-              "flex-1 border-b-2 py-2.5 text-sm font-medium transition-colors",
-              mobileTab === tab.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <section
-          aria-label="Document"
-          className={cn("min-h-0 border-border lg:block lg:border-r", mobileTab === "document" ? "block" : "hidden")}
-        >
+      <WorkspaceSplit
+        tab={mobileTab}
+        onTabChange={setMobileTab}
+        document={
           <DocumentViewer
             doc={doc}
             pages={pagesQuery.data?.pages}
@@ -190,9 +164,9 @@ export function WorkspaceView({ docId }: { docId: string }) {
             active={active}
             citedKeys={citedKeys}
           />
-        </section>
-        <section aria-label="Conversation" className={cn("min-h-0 lg:block", mobileTab === "chat" ? "block" : "hidden")}>
-          {ready ? (
+        }
+        chat={
+          ready ? (
             <ChatPanel doc={doc} pages={pagesQuery.data?.pages} messages={messages} activeKey={activeKey} onCite={onCite} />
           ) : doc.status === "failed" ? (
             <div className="flex h-full flex-col items-center justify-center bg-surface px-6 text-center">
@@ -211,9 +185,9 @@ export function WorkspaceView({ docId }: { docId: string }) {
                 Questions open up as soon as indexing finishes, usually within a minute.
               </p>
             </div>
-          )}
-        </section>
-      </div>
+          )
+        }
+      />
     </div>
   );
 }

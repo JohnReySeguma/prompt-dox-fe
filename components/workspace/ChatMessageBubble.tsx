@@ -15,6 +15,8 @@ interface AssistantMessageProps {
   pages: DocPage[] | undefined;
   activeKey: string | null;
   onCite: (citation: Citation) => void;
+  /** Show thumbs up/down (sent to the API). */
+  allowFeedback?: boolean;
 }
 
 function sourceSnippet(pages: DocPage[] | undefined, citation: Citation): string {
@@ -68,7 +70,7 @@ function Feedback({ messageId }: { messageId: string }) {
   );
 }
 
-export function AssistantMessage({ message, pages, activeKey, onCite }: AssistantMessageProps) {
+export function AssistantMessage({ message, pages, activeKey, onCite, allowFeedback = true }: AssistantMessageProps) {
   const text = message.content;
   const done = !message.streaming;
   const [copied, setCopied] = useState(false);
@@ -133,7 +135,7 @@ export function AssistantMessage({ message, pages, activeKey, onCite }: Assistan
             >
               {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
             </button>
-            <Feedback messageId={message.id} />
+            {allowFeedback && <Feedback messageId={message.id} />}
           </div>
         )}
       </div>
