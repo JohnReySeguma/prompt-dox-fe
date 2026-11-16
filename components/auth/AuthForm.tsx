@@ -147,12 +147,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
     <div className="w-full max-w-[380px]">
       <h1 className="text-[28px] font-semibold tracking-[-0.025em]">{copy.title}</h1>
       <p className="mt-1.5 text-[15px] text-muted-foreground">{copy.subtitle}</p>
-      {isDemo && (
-        <p className="mt-4 rounded-lg bg-marker-soft px-3 py-2.5 text-[13px] leading-relaxed">
-          You&apos;re in the demo workspace. {mode === "sign-up" ? "Creating an account" : "Signing in"} leaves the demo; its
-          sample data isn&apos;t carried over.
-        </p>
-      )}
 
       <Button
         type="button"
@@ -249,7 +243,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {copy.switchLink}
         </Link>
       </p>
-      <div className={isDemo ? "hidden" : "mt-8 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"}>
+      <div className="mt-8 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium">Just looking around?</p>
           <p className="text-[13px] text-muted-foreground">Open a workspace with sample documents. No account needed.</p>
