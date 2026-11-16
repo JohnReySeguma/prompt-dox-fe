@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { TryDemoButton } from "@/components/auth/TryDemoButton";
 import { GoogleIcon } from "@/components/branding/GoogleIcon";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -94,9 +95,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
             {mode === "sign-in" && (
-              <button type="button" className="text-[13px] text-primary hover:underline">
+              <Link href="/forgot-password" className="text-[13px] text-primary hover:underline">
                 Forgot password?
-              </button>
+              </Link>
             )}
           </div>
           <div className="relative">
@@ -134,9 +135,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {copy.switchLink}
         </Link>
       </p>
-      <p className="mt-8 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-        Demo mode: any email and password will sign you in.
-      </p>
+      <div className="mt-8 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium">Just looking around?</p>
+          <p className="text-[13px] text-muted-foreground">Open a workspace with sample documents. No account needed.</p>
+        </div>
+        <TryDemoButton variant="secondary" size="sm" disabled={pending !== null} className="shrink-0" />
+      </div>
+      <p className="mt-3 text-xs text-subtle-foreground">Prototype: any email and password will sign you in.</p>
     </div>
   );
 }

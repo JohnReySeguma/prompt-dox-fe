@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TryDemoButton } from "@/components/auth/TryDemoButton";
 import { Button } from "@/components/ui/button";
 
 export function CtaSection() {
@@ -17,9 +18,7 @@ export function CtaSection() {
           <Button asChild size="lg" className="bg-white text-foreground shadow-none hover:bg-white/90">
             <Link href="/sign-up">Upload a document</Link>
           </Button>
-          <Button asChild size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">
-            <Link href="/dashboard">Explore the demo</Link>
-          </Button>
+          <TryDemoButton size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" />
         </div>
       </div>
     </section>

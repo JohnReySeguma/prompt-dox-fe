@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TryDemoButton } from "@/components/auth/TryDemoButton";
 import { Button } from "@/components/ui/button";
 import { HeroDocument } from "@/components/marketing/HeroDocument";
 
@@ -19,11 +20,9 @@ export function Hero() {
             <Button asChild size="lg">
               <Link href="/sign-up">Upload a document</Link>
             </Button>
-            <Button asChild size="lg" variant="secondary">
-              <Link href="/workspace/q3-financial-report">Open the demo workspace</Link>
-            </Button>
+            <TryDemoButton size="lg" variant="secondary" />
           </div>
-          <p className="mt-5 text-sm text-subtle-foreground">Free for your first 10 documents. Works with PDF, Word, Markdown and text.</p>
+          <p className="mt-5 text-sm text-subtle-foreground">The demo opens a workspace with sample documents, no sign-up needed. Works with PDF, Word, Markdown and text.</p>
         </div>
 
         <HeroDocument />
