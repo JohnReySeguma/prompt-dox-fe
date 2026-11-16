@@ -9,37 +9,53 @@ type PagesOut = components["schemas"]["PagesOut"];
 
 export type DocumentFilter = "all" | "ready" | "processing";
 
+/**
+ * Pass `token` to call the API as someone other than the signed-in user (the
+ * temporary demo workspace). Without it, the signed-in user's token is used.
+ */
+export interface AsToken {
+  token?: string;
+}
+
+const authFor = (as?: AsToken) => as?.token ?? true;
+
 export function toDocumentItem(doc: ApiDocument): DocumentItem {
   return { ...doc, error: doc.error ?? null };
 }
 
 /** Newest first. `processing` means indexing or failed. */
-export async function listDocuments(params: { status?: DocumentFilter; q?: string } = {}): Promise<DocumentItem[]> {
+export async function listDocuments(params: { status?: DocumentFilter; q?: string } = {}, as?: AsToken): Promise<DocumentItem[]> {
   const search = new URLSearchParams();
   if (params.status && params.status !== "all") search.set("status", params.status);
   if (params.q?.trim()) search.set("q", params.q.trim());
   const query = search.size ? `?${search}` : "";
-  const { documents } = await apiFetch<{ documents: ApiDocument[] }>(`/v1/documents${query}`);
+  const { documents } = await apiFetch<{ documents: ApiDocument[] }>(`/v1/documents${query}`, { auth: authFor(as) });
   return documents.map(toDocumentItem);
 }
 
-export async function getDocument(id: string): Promise<DocumentItem> {
-  return toDocumentItem(await apiFetch<ApiDocument>(`/v1/documents/${encodeURIComponent(id)}`));
+export async function getDocument(id: string, as?: AsToken): Promise<DocumentItem> {
+  return toDocumentItem(await apiFetch<ApiDocument>(`/v1/documents/${encodeURIComponent(id)}`, { auth: authFor(as) }));
 }
 
 /** `document_not_ready` (409) only when nothing has been parsed yet. */
-export async function getPages(id: string, range: { from?: number; to?: number } = {}): Promise<{ pageCount: number; pages: DocPage[] }> {
+export async function getPages(
+  id: string,
+  range: { from?: number; to?: number } = {},
+  as?: AsToken,
+): Promise<{ pageCount: number; pages: DocPage[] }> {
   const search = new URLSearchParams();
   if (range.from) search.set("from", String(range.from));
   if (range.to) search.set("to", String(range.to));
   const query = search.size ? `?${search}` : "";
-  const { pageCount, pages } = await apiFetch<PagesOut>(`/v1/documents/${encodeURIComponent(id)}/pages${query}`);
+  const { pageCount, pages } = await apiFetch<PagesOut>(`/v1/documents/${encodeURIComponent(id)}/pages${query}`, { auth: authFor(as) });
   return { pageCount, pages };
 }
 
 /** Three while ready, empty while indexing. */
-export async function getSuggestions(id: string): Promise<string[]> {
-  const { suggestions } = await apiFetch<{ suggestions: string[] }>(`/v1/documents/${encodeURIComponent(id)}/suggestions`);
+export async function getSuggestions(id: string, as?: AsToken): Promise<string[]> {
+  const { suggestions } = await apiFetch<{ suggestions: string[] }>(`/v1/documents/${encodeURIComponent(id)}/suggestions`, {
+    auth: authFor(as),
+  });
   return suggestions;
 }
 
@@ -50,11 +66,11 @@ export async function renameDocument(id: string, name: string): Promise<Document
   );
 }
 
-export function deleteDocument(id: string): Promise<void> {
-  return apiFetch<void>(`/v1/documents/${encodeURIComponent(id)}`, { method: "DELETE" });
+export function deleteDocument(id: string, as?: AsToken): Promise<void> {
+  return apiFetch<void>(`/v1/documents/${encodeURIComponent(id)}`, { method: "DELETE", auth: authFor(as) });
 }
 
-export interface UploadOptions {
+export interface UploadOptions extends AsToken {
   /** 0–100, from the browser's upload progress events. */
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
@@ -89,9 +105,10 @@ function sendUpload(file: File, token: string | null, options: UploadOptions): P
  * `indexing`. Uses XHR because `fetch` can't report upload progress.
  */
 export async function uploadDocument(file: File, options: UploadOptions = {}): Promise<DocumentItem> {
-  let result = await sendUpload(file, getAccessToken(), options);
+  let result = await sendUpload(file, options.token ?? getAccessToken(), options);
 
-  if (result.status === 401) {
+  // An explicit token (demo workspace) has no refresh: its 401 goes to the caller.
+  if (result.status === 401 && !options.token) {
     const error = errorFromParts(result.status, result.body, null);
     const fresh = error.code === "token_expired" ? await refreshAccessToken() : null;
     if (!fresh) {

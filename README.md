@@ -29,7 +29,7 @@ npm run lint
 npm run gen:api   # regenerate types/api.ts from the running backend's OpenAPI spec
 ```
 
-No account? **Try the demo** opens `/demo`: seven sample documents with pre-written answers and working citations. It runs entirely in the browser, so it never creates an account or calls the API.
+No account? **Try the demo** opens `/demo`: seven sample documents with pre-written answers and working citations, answered in the browser with no API calls. Visitors can also upload up to 3 files of their own (5 MB each). The first upload gets a temporary workspace from `POST /v1/auth/demo`; its token stays in that browser (never in Auth.js, so the visitor is never shown as signed in), and the backend deletes it after 24 hours.
 
 ## How it fits together
 
@@ -46,7 +46,7 @@ No account? **Try the demo** opens `/demo`: seven sample documents with pre-writ
 | `/` | Landing page with a self-playing hero, features, how it works and pricing |
 | `/features`, `/pricing` | Marketing detail pages |
 | `/sign-in`, `/sign-up` | Email/password and Google. Signed-in users are sent to the dashboard |
-| `/demo`, `/demo/[docId]` | Public, read-only demo with sample documents (no account, no API calls) |
+| `/demo`, `/demo/[docId]` | Public demo: sample documents, plus temporary uploads with real answers (deleted after 24 hours) |
 | `/forgot-password`, `/reset-password?token=` | Password reset via the emailed link |
 | `/dashboard` | Upload with progress, then indexing to ready by polling. Library with search, filter, rename and delete |
 | `/workspace/[docId]` | Document pages and chat side by side. Citations scroll to and highlight the cited paragraph |
@@ -62,6 +62,6 @@ content/        static copy: pricing, hero animation script, demo documents and 
 hooks/          useChat (SSE), useDemoChat, useUpload, useCurrentUser, useSignOut, useTypewriter (hero only)
 lib/api/        typed API client and endpoint modules
 lib/queries.ts  TanStack Query hooks and keys
-store/          Zustand: in-flight uploads, toasts
+store/          Zustand: in-flight uploads, demo upload workspace, toasts
 types/          api.ts (generated from OpenAPI), index.ts (UI types)
 ```

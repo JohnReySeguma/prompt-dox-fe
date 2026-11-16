@@ -33,6 +33,14 @@ export function forgotPassword(email: string): Promise<void> {
   return apiFetch<void>("/v1/auth/password/forgot", { method: "POST", json: { email }, auth: false });
 }
 
+/**
+ * A temporary demo workspace (deleted by the backend after 24 hours). Used only
+ * for uploads on the public demo; it never becomes an Auth.js sign-in.
+ */
+export function demo(): Promise<AuthSession> {
+  return apiFetch<AuthSession>("/v1/auth/demo", { method: "POST", auth: false });
+}
+
 /** 204 on success. Revokes every session for the account. */
 export function resetPassword(input: { token: string; newPassword: string }): Promise<void> {
   return apiFetch<void>("/v1/auth/password/reset", { method: "POST", json: input, auth: false });

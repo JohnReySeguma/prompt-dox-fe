@@ -29,7 +29,16 @@ interface ChatStream {
  * Saved history lives in the `messages` query; this hook holds only the turn
  * in progress, and swaps it for the server's saved copies on `done`.
  */
-export function useChat(documentId: string): ChatStream {
+export interface UseChatOptions {
+  /** Use this token (the temporary demo workspace) instead of the signed-in user. */
+  token?: string;
+  /** Cache key holding the saved history. Defaults to the signed-in user's messages key. */
+  messagesKey?: readonly unknown[];
+}
+
+export function useChat(documentId: string, options: UseChatOptions = {}): ChatStream {
+  const { token } = options;
+  const messagesKey = options.messagesKey ?? queryKeys.messages(documentId);
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>({ stage: "idle" });
@@ -72,7 +81,7 @@ export function useChat(documentId: string): ChatStream {
 
       void (async () => {
         try {
-          for await (const frame of streamChat(documentId, text, controller.signal)) {
+          for await (const frame of streamChat(documentId, text, controller.signal, token)) {
             switch (frame.event) {
               case "status":
                 setPhase(
@@ -96,7 +105,11 @@ export function useChat(documentId: string): ChatStream {
                 break;
               case "done": {
                 const saved = [toChatMessage(frame.data.userMessage), toChatMessage(frame.data.message)];
-                queryClient.setQueryData<ChatMessage[]>(queryKeys.messages(documentId), (current) => [...(current ?? []), ...saved]);
+                queryClient.setQueryData<ChatMessage[]>(messagesKey, (current) => [...(current ?? []), ...saved]);
+                setPending([]);
+                finish();
+                // The demo workspace has no profile or usage in this app's cache.
+                if (token) return;
                 const queriesToday = frame.data.usage.queriesToday;
                 queryClient.setQueryData<User>(queryKeys.me, (me) => (me ? { ...me, queriesToday } : me));
                 queryClient.setQueryData<Usage>(queryKeys.usage, (usage) =>
@@ -104,8 +117,6 @@ export function useChat(documentId: string): ChatStream {
                 );
                 void queryClient.invalidateQueries({ queryKey: queryKeys.usage });
                 void queryClient.invalidateQueries({ queryKey: queryKeys.me });
-                setPending([]);
-                finish();
                 return;
               }
               case "error":
@@ -124,7 +135,9 @@ export function useChat(documentId: string): ChatStream {
         }
       })();
     },
-    [documentId, queryClient],
+    // messagesKey is derived from documentId (or a stable caller key), so it isn't a separate dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [documentId, queryClient, token],
   );
 
   const stop = useCallback(() => controllerRef.current?.abort(), []);

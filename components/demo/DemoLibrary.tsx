@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileUp } from "lucide-react";
+import { DemoUploads } from "@/components/demo/DemoUploads";
 import { FileIcon } from "@/components/dashboard/FormatBadge";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -13,21 +13,25 @@ export function DemoLibrary() {
       <header className="flex flex-col gap-1">
         <h1 className="text-[28px] font-semibold tracking-[-0.025em]">Demo workspace</h1>
         <p className="text-[15px] text-muted-foreground">
-          Seven sample documents, already indexed. Open one and ask it a question.
+          Seven sample documents, already indexed. Open one and ask it a question, or try your own file.
         </p>
       </header>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <DemoUploads />
+
+      <h2 className="mt-10 text-lg font-semibold tracking-tight">Sample documents</h2>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {DEMO_DOCUMENTS.map((doc) => (
           <div key={doc.id} className="flex h-full flex-col rounded-xl border border-border bg-surface p-5 transition-shadow hover:shadow-paper">
             <div className="flex items-start gap-3">
               <FileIcon format={doc.format} />
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-[14px] font-semibold" title={doc.name}>
+                <h3 className="truncate text-[14px] font-semibold" title={doc.name}>
                   <Link href={`/demo/${doc.id}`} className="hover:text-primary">
                     {doc.name}
                   </Link>
-                </h2>
+                </h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {formatBytes(doc.sizeBytes)}, uploaded {formatDate(doc.uploadedAt)}
                 </p>
@@ -45,19 +49,6 @@ export function DemoLibrary() {
             </div>
           </div>
         ))}
-
-        <div className="flex h-full flex-col items-start justify-between gap-4 rounded-xl border-2 border-dashed border-border-strong p-5">
-          <div>
-            <FileUp className="size-6 text-primary" aria-hidden />
-            <h2 className="mt-3 text-[15px] font-semibold">Try it on your own files</h2>
-            <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-              Create a free account to upload PDFs, Word files, Markdown and text. Your first 10 documents are free.
-            </p>
-          </div>
-          <Button asChild size="sm">
-            <Link href="/sign-up?callbackUrl=%2Fdashboard">Create a free account</Link>
-          </Button>
-        </div>
       </div>
     </div>
   );

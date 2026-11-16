@@ -8,8 +8,9 @@ import { Logo } from "@/components/branding/Logo";
 import { Badge } from "@/components/ui/badge";
 
 /**
- * Frame for the public demo. No account is involved: the demo shows sample
- * documents and canned answers, and nothing is saved.
+ * Frame for the public demo. Visitors are never signed in here: samples use
+ * pre-written answers, and their own uploads go to a temporary workspace
+ * that is deleted after 24 hours.
  */
 export function DemoShell({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
@@ -27,7 +28,7 @@ export function DemoShell({ children }: { children: React.ReactNode }) {
       </header>
       <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-marker-edge/50 bg-marker-soft px-4 py-2 text-center text-[13px]">
         <span className="inline-flex items-center gap-1.5 font-medium">
-          <Eye className="size-3.5" aria-hidden /> A read-only demo with sample documents. Nothing you do here is saved.
+          <Eye className="size-3.5" aria-hidden /> You&apos;re exploring the demo. Files you upload here are deleted after 24 hours.
         </span>
         {status === "authenticated" ? (
           <Link href="/dashboard" className="font-medium text-primary hover:underline">
@@ -35,7 +36,7 @@ export function DemoShell({ children }: { children: React.ReactNode }) {
           </Link>
         ) : (
           <Link href="/sign-up" className="font-medium text-primary hover:underline">
-            Create a free account to use your own files
+            Create a free account to keep your files
           </Link>
         )}
       </div>

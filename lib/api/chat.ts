@@ -10,14 +10,17 @@ export function toChatMessage(message: ApiMessage): ChatMessage {
 }
 
 /** Oldest first. */
-export async function getMessages(documentId: string): Promise<ChatMessage[]> {
-  const { messages } = await apiFetch<{ messages: ApiMessage[] }>(`/v1/documents/${encodeURIComponent(documentId)}/messages`);
+/** Pass `token` to use the temporary demo workspace instead of the signed-in user. */
+export async function getMessages(documentId: string, token?: string): Promise<ChatMessage[]> {
+  const { messages } = await apiFetch<{ messages: ApiMessage[] }>(`/v1/documents/${encodeURIComponent(documentId)}/messages`, {
+    auth: token ?? true,
+  });
   return messages.map(toChatMessage);
 }
 
 /** Starts a new conversation. */
-export function clearMessages(documentId: string): Promise<void> {
-  return apiFetch<void>(`/v1/documents/${encodeURIComponent(documentId)}/messages`, { method: "DELETE" });
+export function clearMessages(documentId: string, token?: string): Promise<void> {
+  return apiFetch<void>(`/v1/documents/${encodeURIComponent(documentId)}/messages`, { method: "DELETE", auth: token ?? true });
 }
 
 /** Assistant messages only. */
@@ -65,8 +68,9 @@ function parseFrame(frame: string): ChatEvent | null {
  * (validation, not found, not ready, daily limit, rate limit). Aborting the
  * signal stops the stream; the server then saves and counts nothing.
  */
-export async function* streamChat(documentId: string, question: string, signal?: AbortSignal): AsyncGenerator<ChatEvent> {
+export async function* streamChat(documentId: string, question: string, signal?: AbortSignal, token?: string): AsyncGenerator<ChatEvent> {
   const response = await apiRequest(`/v1/documents/${encodeURIComponent(documentId)}/chat`, {
+    auth: token ?? true,
     method: "POST",
     json: { question },
     headers: { Accept: "text/event-stream" },
