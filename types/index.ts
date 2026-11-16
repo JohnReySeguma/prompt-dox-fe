@@ -1,6 +1,11 @@
-export type DocFormat = "pdf" | "docx" | "md" | "txt";
+import type { components } from "@/types/api";
 
-export type DocStatus = "uploading" | "indexing" | "ready" | "failed";
+type Schemas = components["schemas"];
+
+export type DocFormat = Schemas["DocumentOut"]["format"];
+
+/** `uploading` exists only in the browser while the file is in flight; the API reports the rest. */
+export type DocStatus = "uploading" | Schemas["DocumentOut"]["status"];
 
 export interface DocPage {
   /** 1-based page number. */
@@ -9,19 +14,22 @@ export interface DocPage {
   paragraphs: string[];
 }
 
+/** A document as the UI shows it. Pages come from `GET /v1/documents/{id}/pages`. */
 export interface DocumentItem {
   id: string;
   name: string;
   format: DocFormat;
   sizeBytes: number;
-  /** ISO 8601 timestamp. */
+  /** ISO 8601 UTC timestamp. */
   uploadedAt: string;
   status: DocStatus;
-  /** Upload progress 0–100, only meaningful while `status === "uploading"`. */
+  /** Upload progress 0–100 while `uploading`; indexing progress while `indexing`. */
   progress: number;
   chunkCount: number;
+  pageCount: number;
   summary: string;
-  pages: DocPage[];
+  /** Plain-language reason when `status === "failed"`. */
+  error: string | null;
 }
 
 /** Points at a paragraph inside a document page. Both values are 1-based. */
@@ -37,20 +45,13 @@ export interface ChatMessage {
   role: ChatRole;
   /** Assistant content may contain `[n]` markers referencing `citations[n - 1]`. */
   content: string;
+  /** Sparse while streaming: a citation is filled in when its event arrives. */
   citations: Citation[];
-  /** True while the simulated stream is still typing this message. */
+  createdAt?: string;
+  /** True while the answer is still streaming in. */
   streaming?: boolean;
-}
-
-export interface MockAnswer {
-  keywords: string[];
-  content: string;
-  citations: Citation[];
-}
-
-export interface DocKnowledge {
-  suggestions: string[];
-  answers: MockAnswer[];
+  /** True for the user's question until the server confirms it was saved. */
+  pending?: boolean;
 }
 
 export type BillingCycle = "monthly" | "yearly";
@@ -67,22 +68,10 @@ export interface PricingPlan {
   highlighted?: boolean;
 }
 
-export interface UserProfile {
-  name: string;
-  email: string;
-  initials: string;
-  role: string;
-  workspace: string;
-  memberSince: string;
-  googleConnected: boolean;
-  queriesToday: number;
-}
-
 /** Plans a user can switch between in the demo (Enterprise is sales-led). */
 export type SelfServePlan = Exclude<PricingPlan["id"], "enterprise">;
 
-export interface PlanLimits {
-  documents: number;
-  /** `null` means unlimited. */
-  dailyQueries: number | null;
-}
+export type User = Schemas["UserOut"];
+export type Usage = Schemas["UsageOut"];
+export type Settings = Schemas["SettingsOut"];
+export type AuthSession = Schemas["AuthSession"];
