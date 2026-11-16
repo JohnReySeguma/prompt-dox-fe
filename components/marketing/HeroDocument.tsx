@@ -6,19 +6,9 @@ import { LogoMark } from "@/components/branding/Logo";
 import { CitedText } from "@/components/workspace/CitedText";
 import { TypingDots } from "@/components/workspace/TypingDots";
 import { useTypewriter } from "@/hooks/use-typewriter";
-import { MOCK_DOCUMENTS } from "@/mock/documents";
-import { MOCK_KNOWLEDGE } from "@/mock/knowledge";
+import { HERO_DOC as DOC, HERO_SCRIPT as SCRIPT } from "@/content/hero-sample";
 import { cn } from "@/lib/utils";
 import type { Citation } from "@/types";
-
-const DOC = MOCK_DOCUMENTS[0];
-const KNOWLEDGE = MOCK_KNOWLEDGE[DOC.id];
-// Questions whose citations sit on a single page, so the highlight lands where the reader is looking.
-const SCRIPT = [
-  { question: "What are the key risks in the outlook?", answer: KNOWLEDGE.answers[2] },
-  { question: "What drove the gross margin improvement?", answer: KNOWLEDGE.answers[1] },
-  { question: "How did operating costs change?", answer: KNOWLEDGE.answers[3] },
-];
 
 type Phase = "asking" | "thinking" | "streaming" | "marked";
 

@@ -2,26 +2,33 @@
 
 import { DocumentLibrary } from "@/components/dashboard/DocumentLibrary";
 import { UploadDropzone } from "@/components/dashboard/UploadDropzone";
-import { usePlanLimits, useWorkspaceStore } from "@/store/workspace-store";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDocuments, useUsage } from "@/lib/queries";
 
 export function DashboardView() {
-  const documents = useWorkspaceStore((state) => state.documents);
-  const queriesToday = useWorkspaceStore((state) => state.queriesToday);
-  const limits = usePlanLimits();
-  const ready = documents.filter((doc) => doc.status === "ready").length;
-  const processing = documents.length - ready;
-  const passages = documents.reduce((total, doc) => total + doc.chunkCount, 0);
+  const { data: documents } = useDocuments();
+  const { data: usage } = useUsage();
 
-  const stats = [
-    { label: "Documents", value: `${documents.length} of ${limits.documents}` },
-    { label: "Ready to ask", value: String(ready) },
-    { label: "Processing", value: String(processing) },
-    { label: "Passages indexed", value: passages.toLocaleString("en-US") },
-    {
-      label: "Questions today",
-      value: limits.dailyQueries === null ? String(queriesToday) : `${queriesToday} of ${limits.dailyQueries}`,
-    },
-  ];
+  const stats =
+    documents && usage
+      ? [
+          {
+            label: "Documents",
+            value:
+              usage.documents.limit === null ? String(usage.documents.used) : `${usage.documents.used} of ${usage.documents.limit}`,
+          },
+          { label: "Ready to ask", value: String(documents.filter((doc) => doc.status === "ready").length) },
+          { label: "Processing", value: String(documents.filter((doc) => doc.status !== "ready").length) },
+          { label: "Passages indexed", value: usage.passagesIndexed.toLocaleString("en-US") },
+          {
+            label: "Questions today",
+            value:
+              usage.queriesToday.limit === null
+                ? String(usage.queriesToday.used)
+                : `${usage.queriesToday.used} of ${usage.queriesToday.limit}`,
+          },
+        ]
+      : null;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 lg:py-10">
@@ -31,12 +38,19 @@ export function DashboardView() {
       </header>
 
       <dl className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-5">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-surface px-5 py-4 last:max-lg:col-span-2">
-            <dt className="text-[13px] text-muted-foreground">{stat.label}</dt>
-            <dd className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{stat.value}</dd>
-          </div>
-        ))}
+        {stats
+          ? stats.map((stat) => (
+              <div key={stat.label} className="bg-surface px-5 py-4 last:max-lg:col-span-2">
+                <dt className="text-[13px] text-muted-foreground">{stat.label}</dt>
+                <dd className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{stat.value}</dd>
+              </div>
+            ))
+          : Array.from({ length: 5 }, (_, index) => (
+              <div key={index} className="bg-surface px-5 py-4 last:max-lg:col-span-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="mt-2 h-6 w-16" />
+              </div>
+            ))}
       </dl>
 
       <div className="mt-8">

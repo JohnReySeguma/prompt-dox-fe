@@ -4,43 +4,31 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileUp, TriangleAlert, Upload, X } from "lucide-react";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
-import { Button } from "@/components/ui/button";
-import { SUPPORTED_FORMATS, usePlanLimits, useWorkspaceStore } from "@/store/workspace-store";
-import { cn } from "@/lib/utils";
-
-const SAMPLE_FILES = [
-  { name: "Board-Meeting-Minutes-Oct.pdf", size: 1_204_880 },
-  { name: "Security-Whitepaper-2026.pdf", size: 3_912_004 },
-  { name: "sales-playbook.docx", size: 512_330 },
-  { name: "release-notes-v5.md", size: 44_120 },
-  { name: "interview-transcript.txt", size: 26_870 },
-];
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useUpload } from "@/hooks/use-upload";
+import { useUsage } from "@/lib/queries";
+import { DEMO_MAX_FILE_BYTES, MAX_FILE_BYTES, SUPPORTED_FORMATS, useUploadStore } from "@/store/upload-store";
+import { cn, formatBytes } from "@/lib/utils";
 
 export function UploadDropzone() {
-  const uploadFile = useWorkspaceStore((state) => state.uploadFile);
-  const docCount = useWorkspaceStore((state) => state.documents.length);
+  const upload = useUpload();
+  const user = useCurrentUser();
+  const { data: usage } = useUsage();
+  const inFlight = useUploadStore((state) => state.uploads.length);
+  const errors = useUploadStore((state) => state.errors);
+  const setErrors = useUploadStore((state) => state.setErrors);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
-  const sampleIndex = useRef(0);
   const [dragging, setDragging] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
 
-  const { documents: documentLimit, plan } = usePlanLimits();
-  const atLimit = docCount >= documentLimit;
+  const documentLimit = usage?.documents.limit ?? null;
+  const plan = usage?.plan ?? "free";
+  // The server enforces the limit too; this just saves a doomed upload.
+  const atLimit = documentLimit !== null && (usage?.documents.used ?? 0) + inFlight >= documentLimit;
+  const maxBytes = user?.isDemo ? DEMO_MAX_FILE_BYTES : MAX_FILE_BYTES;
 
-  const handleFiles = (files: Array<{ name: string; size: number }>) => {
-    const nextErrors: string[] = [];
-    for (const file of files) {
-      const result = uploadFile(file);
-      if (!result.ok) nextErrors.push(result.error);
-    }
-    setErrors(nextErrors);
-  };
-
-  const addSample = () => {
-    const sample = SAMPLE_FILES[sampleIndex.current % SAMPLE_FILES.length];
-    sampleIndex.current += 1;
-    handleFiles([sample]);
+  const handleFiles = (files: File[]) => {
+    if (files.length) upload(files);
   };
 
   return (
@@ -99,7 +87,9 @@ export function UploadDropzone() {
               ? plan === "free"
                 ? "Delete a document or upgrade to Pro to add more."
                 : "Delete a document to add more."
-              : "Up to 50 MB per file."}
+              : user?.isDemo
+                ? `Up to ${formatBytes(maxBytes)} per file and 3 uploads in the demo workspace.`
+                : `Up to ${formatBytes(maxBytes)} per file.`}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-1.5">
@@ -121,12 +111,9 @@ export function UploadDropzone() {
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-subtle-foreground">Prototype: files stay in your browser. Upload and indexing are simulated.</p>
-        <Button variant="link" size="sm" onClick={addSample} disabled={atLimit}>
-          Add a sample file
-        </Button>
-      </div>
+      <p className="mt-2 text-xs text-subtle-foreground">
+        Files are stored in your private workspace. Indexing usually takes under a minute.
+      </p>
 
       <AnimatePresence>
         {errors.length > 0 && (

@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FolderOpen, LayoutGrid, List, Search } from "lucide-react";
+import { CircleAlert, FileUp, FolderOpen, LayoutGrid, List, RotateCw, Search } from "lucide-react";
 import { DocumentActions } from "@/components/dashboard/DocumentActions";
 import { FileIcon } from "@/components/dashboard/FormatBadge";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { useWorkspaceStore } from "@/store/workspace-store";
+import { Skeleton } from "@/components/ui/skeleton";
+import { errorMessage } from "@/lib/api/errors";
+import { useDocuments } from "@/lib/queries";
+import { useUploadStore } from "@/store/upload-store";
 import { cn, formatBytes, formatDate } from "@/lib/utils";
 import type { DocumentItem } from "@/types";
 
@@ -57,9 +60,16 @@ function DocumentCard({ doc }: { doc: DocumentItem }) {
             {formatBytes(doc.sizeBytes)}, uploaded {formatDate(doc.uploadedAt)}
           </p>
         </div>
-        <DocumentActions doc={doc} />
+        {doc.status !== "uploading" && <DocumentActions doc={doc} />}
       </div>
-      <p className="mt-4 line-clamp-2 flex-1 text-[13.5px] leading-relaxed text-muted-foreground">{doc.summary}</p>
+      {doc.status === "failed" ? (
+        <p className="mt-4 flex flex-1 items-start gap-2 text-[13.5px] leading-relaxed text-destructive">
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {doc.error ?? "We couldn't read this file."}
+        </p>
+      ) : (
+        <p className="mt-4 line-clamp-2 flex-1 text-[13.5px] leading-relaxed text-muted-foreground">{doc.summary}</p>
+      )}
       {doc.status === "uploading" && <Progress value={doc.progress} className="mt-4" />}
       <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
         <div className="flex items-center gap-2">
@@ -85,6 +95,11 @@ function DocumentRow({ doc }: { doc: DocumentItem }) {
             <StatusBadge doc={doc} />
           </div>
           {doc.status === "uploading" && <Progress value={doc.progress} className="mt-1.5 h-1 max-w-48" />}
+          {doc.status === "failed" && (
+            <p className="mt-1 truncate text-xs text-destructive" title={doc.error ?? undefined}>
+              {doc.error ?? "We couldn't read this file."}
+            </p>
+          )}
         </div>
       </div>
       <span className="hidden text-sm text-muted-foreground tabular-nums md:block">{formatBytes(doc.sizeBytes)}</span>
@@ -96,22 +111,41 @@ function DocumentRow({ doc }: { doc: DocumentItem }) {
         <span className="hidden sm:block">
           <OpenButton doc={doc} />
         </span>
-        <DocumentActions doc={doc} />
+        {doc.status !== "uploading" && <DocumentActions doc={doc} />}
       </div>
     </div>
   );
 }
 
+function LibrarySkeleton() {
+  return (
+    <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading documents">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div key={index} className="rounded-xl border border-border bg-surface p-5">
+          <div className="flex items-start gap-3">
+            <Skeleton className="size-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </div>
+          <Skeleton className="mt-5 h-3 w-full" />
+          <Skeleton className="mt-2 h-3 w-2/3" />
+          <Skeleton className="mt-6 h-8 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function DocumentLibrary() {
-  const documents = useWorkspaceStore((state) => state.documents);
-  const resumeIndexing = useWorkspaceStore((state) => state.resumeIndexing);
+  const { data: serverDocuments, isPending, isError, error, refetch, isRefetching } = useDocuments();
+  const uploads = useUploadStore((state) => state.uploads);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<View>("grid");
 
-  useEffect(() => {
-    resumeIndexing();
-  }, [resumeIndexing]);
+  const documents = useMemo(() => [...uploads, ...(serverDocuments ?? [])], [uploads, serverDocuments]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -183,7 +217,24 @@ export function DocumentLibrary() {
         </div>
       </div>
 
-      {visible.length === 0 ? (
+      {isPending && uploads.length === 0 ? (
+        <LibrarySkeleton />
+      ) : isError && !serverDocuments ? (
+        <div role="alert" className="mt-5 flex flex-col items-center rounded-xl border border-border bg-surface px-6 py-14 text-center">
+          <CircleAlert className="size-7 text-destructive" aria-hidden />
+          <p className="mt-3 font-medium">Your documents didn&apos;t load</p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">{errorMessage(error)}</p>
+          <Button variant="secondary" size="sm" className="mt-5" onClick={() => void refetch()} disabled={isRefetching}>
+            <RotateCw className={cn(isRefetching && "animate-spin")} /> Try again
+          </Button>
+        </div>
+      ) : documents.length === 0 ? (
+        <div className="mt-5 flex flex-col items-center rounded-xl border border-dashed border-border-strong px-6 py-14 text-center">
+          <FileUp className="size-7 text-subtle-foreground" aria-hidden />
+          <p className="mt-3 font-medium">No documents yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">Upload a PDF, Word, Markdown or text file above to start asking questions.</p>
+        </div>
+      ) : visible.length === 0 ? (
         <div className="mt-5 flex flex-col items-center rounded-xl border border-dashed border-border-strong px-6 py-14 text-center">
           <FolderOpen className="size-7 text-subtle-foreground" aria-hidden />
           <p className="mt-3 font-medium">No documents match</p>

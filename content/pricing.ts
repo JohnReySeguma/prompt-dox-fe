@@ -1,4 +1,4 @@
-import type { PlanLimits, PricingPlan, SelfServePlan, UserProfile } from "@/types";
+import type { PricingPlan } from "@/types";
 
 export const PRICING_PLANS: PricingPlan[] = [
   {
@@ -44,19 +44,3 @@ export const PRICING_PLANS: PricingPlan[] = [
     cta: "Talk to sales",
   },
 ];
-
-export const MOCK_USER: UserProfile = {
-  name: "Avery Santos",
-  email: "avery.santos@northwind.example",
-  initials: "AS",
-  role: "Workspace Admin",
-  workspace: "Northwind Analytics",
-  memberSince: "2026-03-14T00:00:00Z",
-  googleConnected: true,
-  queriesToday: 64,
-};
-
-export const PLAN_LIMITS: Record<SelfServePlan, PlanLimits> = {
-  free: { documents: 10, dailyQueries: 100 },
-  pro: { documents: 500, dailyQueries: null },
-};

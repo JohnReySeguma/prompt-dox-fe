@@ -13,7 +13,7 @@ export function StatusBadge({ doc }: { doc: Pick<DocumentItem, "status" | "progr
     case "indexing":
       return (
         <Badge variant="warning">
-          <LoaderCircle className="animate-spin" aria-hidden /> Indexing…
+          <LoaderCircle className="animate-spin" aria-hidden /> Indexing{doc.progress > 0 && doc.progress < 100 ? ` ${Math.round(doc.progress)}%` : "…"}
         </Badge>
       );
     case "ready":

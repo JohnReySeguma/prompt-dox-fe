@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Ellipsis, MessagesSquare, PencilLine, Trash2 } from "lucide-react";
+import { Ellipsis, LoaderCircle, MessagesSquare, PencilLine, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,14 +23,51 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input, Label } from "@/components/ui/input";
-import { useWorkspaceStore } from "@/store/workspace-store";
+import { deleteDocument, renameDocument } from "@/lib/api/documents";
+import { ApiError, errorMessage } from "@/lib/api/errors";
+import { queryKeys } from "@/lib/queries";
+import { useToast } from "@/store/toast-store";
 import type { DocumentItem } from "@/types";
 
+const MAX_NAME = 200;
+
 export function DocumentActions({ doc }: { doc: DocumentItem }) {
-  const renameDocument = useWorkspaceStore((state) => state.renameDocument);
-  const deleteDocument = useWorkspaceStore((state) => state.deleteDocument);
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
   const [draft, setDraft] = useState(doc.name);
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  const rename = useMutation({
+    mutationFn: (name: string) => renameDocument(doc.id, name),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<DocumentItem[]>(queryKeys.documents, (current) =>
+        current?.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      queryClient.setQueryData(queryKeys.document(updated.id), updated);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.documents });
+      setDialog(null);
+    },
+    onError: (error) => setRenameError(error instanceof ApiError ? (error.fieldErrors.name ?? error.message) : errorMessage(error)),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteDocument(doc.id),
+    onSuccess: () => {
+      queryClient.setQueryData<DocumentItem[]>(queryKeys.documents, (current) => current?.filter((item) => item.id !== doc.id));
+      for (const key of [queryKeys.document(doc.id), queryKeys.pages(doc.id), queryKeys.messages(doc.id), queryKeys.suggestions(doc.id)]) {
+        queryClient.removeQueries({ queryKey: key });
+      }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.documents });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+      setDialog(null);
+      toast({ title: "Document deleted", description: `“${doc.name}” and its chat history were removed.` });
+    },
+    onError: (error) => {
+      setDialog(null);
+      toast({ title: "Couldn't delete the document", description: errorMessage(error) });
+    },
+  });
 
   const ready = doc.status === "ready";
 
@@ -51,6 +89,7 @@ export function DocumentActions({ doc }: { doc: DocumentItem }) {
           <DropdownMenuItem
             onSelect={() => {
               setDraft(doc.name);
+              setRenameError(null);
               setDialog("rename");
             }}
           >
@@ -68,8 +107,12 @@ export function DocumentActions({ doc }: { doc: DocumentItem }) {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              renameDocument(doc.id, draft);
-              setDialog(null);
+              const name = draft.trim();
+              if (!name || name === doc.name) {
+                setDialog(null);
+                return;
+              }
+              rename.mutate(name);
             }}
           >
             <DialogHeader>
@@ -79,14 +122,31 @@ export function DocumentActions({ doc }: { doc: DocumentItem }) {
             <Label htmlFor={`rename-${doc.id}`} className="sr-only">
               Document name
             </Label>
-            <Input id={`rename-${doc.id}`} value={draft} onChange={(event) => setDraft(event.target.value)} autoFocus />
+            <Input
+              id={`rename-${doc.id}`}
+              value={draft}
+              maxLength={MAX_NAME}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setRenameError(null);
+              }}
+              aria-invalid={Boolean(renameError)}
+              aria-describedby={renameError ? `rename-error-${doc.id}` : undefined}
+              autoFocus
+            />
+            {renameError && (
+              <p id={`rename-error-${doc.id}`} className="mt-1.5 text-xs text-destructive">
+                {renameError}
+              </p>
+            )}
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="secondary">
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={!draft.trim()}>
+              <Button type="submit" disabled={!draft.trim() || rename.isPending}>
+                {rename.isPending && <LoaderCircle className="animate-spin" />}
                 Save name
               </Button>
             </DialogFooter>
@@ -99,21 +159,15 @@ export function DocumentActions({ doc }: { doc: DocumentItem }) {
           <DialogHeader>
             <DialogTitle>Delete this document?</DialogTitle>
             <DialogDescription>
-              “{doc.name}” and its {doc.chunkCount} indexed chunks will be removed, along with its chat history. This can&apos;t be undone.
+              “{doc.name}”{doc.chunkCount > 0 ? ` and its ${doc.chunkCount} indexed passages` : ""} will be removed, along with its chat history. This can&apos;t be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="secondary">Cancel</Button>
             </DialogClose>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                setDialog(null);
-                deleteDocument(doc.id);
-              }}
-            >
-              <Trash2 /> Delete document
+            <Button variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>
+              {remove.isPending ? <LoaderCircle className="animate-spin" /> : <Trash2 />} Delete document
             </Button>
           </DialogFooter>
         </DialogContent>
