@@ -21,7 +21,7 @@ type MobileTab = "document" | "chat";
 
 export function WorkspaceSkeleton() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col" aria-busy="true" aria-label="Loading document">
+    <div data-full-height className="flex min-h-0 flex-1 flex-col" aria-busy="true" aria-label="Loading document">
       <div className="flex items-center gap-3 border-b border-border bg-surface px-5 py-3">
         <Skeleton className="size-8" />
         <div className="space-y-1.5">
@@ -125,7 +125,7 @@ export function WorkspaceView({ docId }: { docId: string }) {
   const activeKey = active ? citationKey(active.citation) : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div data-full-height className="flex min-h-0 flex-1 flex-col">
       <title>{`${doc.name} · PromptDox`}</title>
       <header className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3 sm:px-5">
         <Button asChild variant="ghost" size="icon-sm" aria-label="Back to documents">

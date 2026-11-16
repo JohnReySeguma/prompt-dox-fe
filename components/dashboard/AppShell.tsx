@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileStack, FlaskConical, LoaderCircle, LogOut, Menu, MessagesSquare, UserRound, X, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
@@ -33,9 +33,44 @@ function useNavItems(): NavItem[] {
   ];
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function AppNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const items = useNavItems();
+  return (
+    <nav className="mt-2 space-y-0.5" aria-label="App">
+      {items.map((item) => {
+        const active = pathname.startsWith(item.match);
+        return (
+          <Link
+            key={item.match}
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors",
+              active ? "bg-primary-soft font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <item.icon className="size-4" aria-hidden />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function NavSkeleton() {
+  return (
+    <div className="mt-2 space-y-1">
+      <Skeleton className="h-9" />
+      <Skeleton className="h-9" />
+      <Skeleton className="h-9" />
+    </div>
+  );
+}
+
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const user = useCurrentUser();
   const { data: usage } = useUsage();
   const { signOut, pending: signingOut } = useSignOut();
@@ -48,26 +83,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </Link>
 
       <p className="mt-8 truncate px-3 text-xs font-medium text-subtle-foreground">{user?.workspace ?? " "}</p>
-      <nav className="mt-2 space-y-0.5" aria-label="App">
-        {items.map((item) => {
-          const active = pathname.startsWith(item.match);
-          return (
-            <Link
-              key={item.match}
-              href={item.href}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors",
-                active ? "bg-primary-soft font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <item.icon className="size-4" aria-hidden />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <Suspense fallback={<NavSkeleton />}>
+        <AppNav onNavigate={onNavigate} />
+      </Suspense>
 
       <div className="mt-auto space-y-3">
         {usage ? (
@@ -128,41 +146,31 @@ function DemoBanner() {
   );
 }
 
-export function ShellSkeleton() {
-  return (
-    <div className="flex min-h-screen" aria-busy="true" aria-label="Loading your workspace">
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-surface p-4 lg:block">
-        <Logo height={28} priority />
-        <div className="mt-10 space-y-2">
-          <Skeleton className="h-8" />
-          <Skeleton className="h-8" />
-          <Skeleton className="h-8" />
-        </div>
-      </aside>
-      <div className="flex-1 px-5 py-10 sm:px-8">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="mt-3 h-4 w-72" />
-        <Skeleton className="mt-8 h-24" />
-      </div>
-    </div>
-  );
-}
-
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+/** Sends signed-out visitors to sign in, then back here. Renders nothing. */
+function AuthGuard() {
   const { status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const user = useCurrentUser();
-
   useEffect(() => {
     if (status === "unauthenticated") router.replace(`/sign-in?callbackUrl=${encodeURIComponent(pathname)}`);
   }, [status, router, pathname]);
+  return null;
+}
 
-  if (status !== "authenticated") return <ShellSkeleton />;
+/**
+ * The shell and the page always render, so every route has an instant static
+ * shell. Until the session loads, data queries stay disabled and each page
+ * shows its own skeleton.
+ */
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const user = useCurrentUser();
 
   return (
     <div className="flex min-h-screen">
+      <Suspense>
+        <AuthGuard />
+      </Suspense>
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border bg-surface p-4 lg:block">
         <SidebarContent />
@@ -209,8 +217,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      {/* The workspace is a fixed-height split view; other pages scroll the window. */}
-      <div className={cn("flex min-w-0 flex-1 flex-col pt-14 lg:pt-0", pathname.startsWith("/workspace") && "h-dvh")}>
+      {/* Pages marked data-full-height (the workspace split view) get a fixed height; others scroll the window. */}
+      <div className="flex min-w-0 flex-1 flex-col pt-14 has-[[data-full-height]]:h-dvh lg:pt-0">
         {user?.isDemo && <DemoBanner />}
         {children}
       </div>
