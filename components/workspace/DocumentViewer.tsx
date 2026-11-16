@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { CircleAlert, LoaderCircle, Minus, Plus, RotateCw } from "lucide-react";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
 import { citationKey } from "@/components/workspace/CitedText";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ApiError, errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/utils";
-import type { Citation, DocumentItem } from "@/types";
+import type { Citation, DocPage, DocumentItem } from "@/types";
 
 export interface ActiveCitation {
   citation: Citation;
@@ -16,6 +18,11 @@ export interface ActiveCitation {
 
 interface DocumentViewerProps {
   doc: DocumentItem;
+  /** From `GET /v1/documents/{id}/pages`; undefined while loading or on error. */
+  pages: DocPage[] | undefined;
+  pagesLoading: boolean;
+  pagesError: unknown;
+  onRetryPages: () => void;
   active: ActiveCitation | null;
   /** Paragraphs referenced by any answer in the conversation. */
   citedKeys: Set<string>;
@@ -33,7 +40,45 @@ function SweepingMarker({ children }: { children: React.ReactNode }) {
   return <span className={cn("marker", on ? "marker-on" : "marker-off")}>{children}</span>;
 }
 
-export function DocumentViewer({ doc, active, citedKeys }: DocumentViewerProps) {
+const NO_PAGES: DocPage[] = [];
+
+function PagesPlaceholder({ loading, error, indexing, onRetry }: { loading: boolean; error: unknown; indexing: boolean; onRetry: () => void }) {
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-[680px] space-y-3 rounded-[4px] bg-surface px-10 py-9 shadow-paper" aria-busy="true" aria-label="Loading pages">
+        <Skeleton className="h-6 w-1/2" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-4/5" />
+      </div>
+    );
+  }
+  // 409 `document_not_ready`: nothing has been parsed yet. Pages appear once indexing finishes.
+  const notReady = error instanceof ApiError && error.code === "document_not_ready";
+  return (
+    <div className="mx-auto flex max-w-[680px] flex-col items-center rounded-[4px] bg-surface px-10 py-16 text-center shadow-paper">
+      {notReady || indexing ? (
+        <>
+          <LoaderCircle className="size-6 animate-spin text-primary" aria-hidden />
+          <p className="mt-4 font-medium">Preparing a preview</p>
+          <p className="mt-1 text-sm text-muted-foreground">The pages show up here as soon as the file has been read.</p>
+        </>
+      ) : (
+        <>
+          <CircleAlert className="size-6 text-destructive" aria-hidden />
+          <p className="mt-4 font-medium">The pages didn&apos;t load</p>
+          <p className="mt-1 text-sm text-muted-foreground">{errorMessage(error)}</p>
+          <Button variant="secondary" size="sm" className="mt-5" onClick={onRetry}>
+            <RotateCw /> Try again
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function DocumentViewer({ doc, pages: loadedPages, pagesLoading, pagesError, onRetryPages, active, citedKeys }: DocumentViewerProps) {
+  const pages = loadedPages ?? NO_PAGES;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [zoomIndex, setZoomIndex] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,7 +89,7 @@ export function DocumentViewer({ doc, active, citedKeys }: DocumentViewerProps) 
     if (!active) return;
     const target = scrollRef.current?.querySelector<HTMLElement>(`[data-para="${citationKey(active.citation)}"]`);
     target?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [active]);
+  }, [active, pages]);
 
   // Track which page is in view for the toolbar.
   useEffect(() => {
@@ -59,7 +104,7 @@ export function DocumentViewer({ doc, active, citedKeys }: DocumentViewerProps) 
     );
     root.querySelectorAll("[data-page]").forEach((node) => observer.observe(node));
     return () => observer.disconnect();
-  }, [doc.id]);
+  }, [doc.id, pages]);
 
   const jumpToPage = (page: number) => {
     scrollRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -71,10 +116,10 @@ export function DocumentViewer({ doc, active, citedKeys }: DocumentViewerProps) 
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <FormatBadge format={doc.format} />
-          <div className="flex items-center gap-0.5" role="group" aria-label="Pages">
-            {doc.pages.map((page) => (
+          <div className="flex max-w-[50vw] items-center gap-0.5 overflow-x-auto lg:max-w-[22vw]" role="group" aria-label="Pages">
+            {pages.map((page) => (
               <button
                 key={page.number}
                 type="button"
@@ -82,7 +127,7 @@ export function DocumentViewer({ doc, active, citedKeys }: DocumentViewerProps) 
                 aria-label={`Go to page ${page.number}`}
                 aria-current={currentPage === page.number ? "page" : undefined}
                 className={cn(
-                  "grid size-7 place-items-center rounded-md text-[12px] tabular-nums transition-colors",
+                  "grid size-7 shrink-0 place-items-center rounded-md text-[12px] tabular-nums transition-colors",
                   currentPage === page.number ? "bg-foreground font-medium text-white" : "text-muted-foreground hover:bg-muted",
                 )}
               >
@@ -110,8 +155,11 @@ export function DocumentViewer({ doc, active, citedKeys }: DocumentViewerProps) 
 
       {/* Pages */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-[#e9ebef] px-4 py-6 sm:px-8">
+        {pages.length === 0 && (
+          <PagesPlaceholder loading={pagesLoading} error={pagesError} indexing={doc.status === "indexing"} onRetry={onRetryPages} />
+        )}
         <div className="mx-auto max-w-[680px] space-y-6" style={{ fontSize: `${zoom}rem` }}>
-          {doc.pages.map((page) => (
+          {pages.map((page) => (
             <article
               key={page.number}
               data-page={page.number}
@@ -121,7 +169,7 @@ export function DocumentViewer({ doc, active, citedKeys }: DocumentViewerProps) 
               <header className="mb-[1.6em] flex items-baseline justify-between gap-4 text-[0.72em] text-subtle-foreground">
                 <span className="truncate">{doc.name}</span>
                 <span className="shrink-0 tabular-nums">
-                  {page.number} / {doc.pages.length}
+                  {page.number} / {doc.pageCount || pages.length}
                 </span>
               </header>
               <h2 className="font-serif text-[1.4em] leading-tight font-medium tracking-tight">{page.heading}</h2>

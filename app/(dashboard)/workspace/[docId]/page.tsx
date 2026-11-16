@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
-import { WorkspaceView } from "@/components/workspace/WorkspaceView";
-import { MOCK_DOCUMENTS } from "@/mock/documents";
+import { Suspense } from "react";
+import { WorkspaceSkeleton, WorkspaceView } from "@/components/workspace/WorkspaceView";
 
-export function generateStaticParams() {
-  return MOCK_DOCUMENTS.map((doc) => ({ docId: doc.id }));
-}
+// The document name is set client-side once it loads (IDs are opaque `doc_...` values).
+export const metadata: Metadata = { title: "Workspace" };
 
-export async function generateMetadata({ params }: PageProps<"/workspace/[docId]">): Promise<Metadata> {
+async function WorkspaceRoute({ params }: { params: PageProps<"/workspace/[docId]">["params"] }) {
   const { docId } = await params;
-  const doc = MOCK_DOCUMENTS.find((item) => item.id === docId);
-  return { title: doc ? doc.name : "Workspace" };
-}
-
-export default async function WorkspacePage({ params }: PageProps<"/workspace/[docId]">) {
-  const { docId } = await params;
-  // Key by doc so citation + tab state resets when switching documents.
+  // Key by doc so citation and tab state reset when switching documents.
   return <WorkspaceView key={docId} docId={docId} />;
+}
+
+export default function WorkspacePage({ params }: PageProps<"/workspace/[docId]">) {
+  // Document IDs are only known at request time, so the view streams in behind Suspense.
+  return (
+    <Suspense fallback={<WorkspaceSkeleton />}>
+      <WorkspaceRoute params={params} />
+    </Suspense>
+  );
 }

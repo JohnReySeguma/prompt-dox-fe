@@ -1,31 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, Copy, ThumbsUp } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 import { LogoMark } from "@/components/branding/Logo";
 import { CitedText, citationKey } from "@/components/workspace/CitedText";
-import { useTypewriter } from "@/hooks/use-typewriter";
+import { sendFeedback } from "@/lib/api/chat";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, Citation, DocumentItem } from "@/types";
+import type { ChatMessage, Citation, DocPage } from "@/types";
 
 interface AssistantMessageProps {
   message: ChatMessage;
-  doc: DocumentItem;
+  /** Loaded pages, used to quote the cited paragraph under "Sources". */
+  pages: DocPage[] | undefined;
   activeKey: string | null;
   onCite: (citation: Citation) => void;
-  onStreamEnd: (messageId: string) => void;
-  /** Called as streamed text grows, so the panel can keep the newest text in view. */
-  onProgress: () => void;
 }
 
-function sourceSnippet(doc: DocumentItem, citation: Citation): string {
-  const text = doc.pages[citation.page - 1]?.paragraphs[citation.paragraph - 1] ?? "";
+function sourceSnippet(pages: DocPage[] | undefined, citation: Citation): string {
+  const text = pages?.find((page) => page.number === citation.page)?.paragraphs[citation.paragraph - 1] ?? "";
   return text.length > 120 ? `${text.slice(0, 120).trimEnd()}…` : text;
 }
 
 function uniqueCitations(citations: Citation[]): Citation[] {
   const seen = new Set<string>();
+  // While streaming the array can be sparse; skip the holes.
   return citations.filter((citation) => {
+    if (!citation) return false;
     const key = citationKey(citation);
     if (seen.has(key)) return false;
     seen.add(key);
@@ -33,18 +34,44 @@ function uniqueCitations(citations: Citation[]): Citation[] {
   });
 }
 
-export function AssistantMessage({ message, doc, activeKey, onCite, onStreamEnd, onProgress }: AssistantMessageProps) {
-  const { text, done } = useTypewriter(message.content, {
-    enabled: Boolean(message.streaming),
-    interval: 16,
-    onDone: () => onStreamEnd(message.id),
+/** Thumbs up/down, sent once per answer (`POST /v1/messages/{id}/feedback`). */
+function Feedback({ messageId }: { messageId: string }) {
+  const [given, setGiven] = useState<boolean | null>(null);
+  const feedback = useMutation({
+    mutationFn: (helpful: boolean) => sendFeedback(messageId, helpful),
+    onMutate: (helpful) => setGiven(helpful),
+    onError: () => setGiven(null),
   });
-  const [copied, setCopied] = useState(false);
-  const [liked, setLiked] = useState(false);
 
-  useEffect(() => {
-    onProgress();
-  }, [text, done, onProgress]);
+  if (given !== null) {
+    return <span className="px-1.5 py-1 text-xs text-subtle-foreground">Thanks for the feedback</span>;
+  }
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => feedback.mutate(true)}
+        className="rounded-md p-1.5 text-subtle-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label="Helpful answer"
+      >
+        <ThumbsUp className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => feedback.mutate(false)}
+        className="rounded-md p-1.5 text-subtle-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label="Unhelpful answer"
+      >
+        <ThumbsDown className="size-3.5" />
+      </button>
+    </>
+  );
+}
+
+export function AssistantMessage({ message, pages, activeKey, onCite }: AssistantMessageProps) {
+  const text = message.content;
+  const done = !message.streaming;
+  const [copied, setCopied] = useState(false);
 
   const copy = async () => {
     try {
@@ -86,7 +113,7 @@ export function AssistantMessage({ message, doc, activeKey, onCite, onStreamEnd,
                         Page {citation.page}, ¶{citation.paragraph}
                       </span>
                       <span className="line-clamp-2 font-serif text-[13.5px] leading-snug text-muted-foreground">
-                        {sourceSnippet(doc, citation)}
+                        {sourceSnippet(pages, citation)}
                       </span>
                     </button>
                   </li>
@@ -106,15 +133,7 @@ export function AssistantMessage({ message, doc, activeKey, onCite, onStreamEnd,
             >
               {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
             </button>
-            <button
-              type="button"
-              onClick={() => setLiked((value) => !value)}
-              aria-pressed={liked}
-              className="rounded-md p-1.5 text-subtle-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Mark answer as helpful"
-            >
-              <ThumbsUp className={cn("size-3.5", liked && "fill-primary/15 text-primary")} />
-            </button>
+            <Feedback messageId={message.id} />
           </div>
         )}
       </div>
@@ -125,7 +144,12 @@ export function AssistantMessage({ message, doc, activeKey, onCite, onStreamEnd,
 export function UserMessage({ message }: { message: ChatMessage }) {
   return (
     <div className="flex justify-end">
-      <p className="max-w-[85%] rounded-2xl rounded-br-[4px] bg-primary px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-white">
+      <p
+        className={cn(
+          "max-w-[85%] rounded-2xl rounded-br-[4px] bg-primary px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-white transition-opacity",
+          message.pending && "opacity-80",
+        )}
+      >
         {message.content}
       </p>
     </div>

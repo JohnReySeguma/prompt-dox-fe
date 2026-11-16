@@ -1,37 +1,51 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, CircleAlert, Square, X } from "lucide-react";
 import { LogoMark } from "@/components/branding/Logo";
 import { AssistantMessage, UserMessage } from "@/components/workspace/ChatMessageBubble";
 import { TypingDots } from "@/components/workspace/TypingDots";
 import { Button } from "@/components/ui/button";
-import { getSuggestions } from "@/mock/knowledge";
-import { useWorkspaceStore } from "@/store/workspace-store";
-import type { ChatMessage, Citation, DocumentItem } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useChat, type ChatPhase } from "@/hooks/use-chat";
+import { useSettings, useSuggestions } from "@/lib/queries";
+import type { ChatMessage, Citation, DocPage, DocumentItem } from "@/types";
 
-const EMPTY: ChatMessage[] = [];
+const MAX_QUESTION = 2000;
 
 interface ChatPanelProps {
   doc: DocumentItem;
+  pages: DocPage[] | undefined;
+  /** Saved history, oldest first. */
+  messages: ChatMessage[];
   activeKey: string | null;
   onCite: (citation: Citation) => void;
 }
 
-export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
-  const messages = useWorkspaceStore((state) => state.chats[doc.id] ?? EMPTY);
-  const thinking = useWorkspaceStore((state) => Boolean(state.thinking[doc.id]));
-  const sendMessage = useWorkspaceStore((state) => state.sendMessage);
-  const completeMessage = useWorkspaceStore((state) => state.completeMessage);
+function phaseLabel(phase: ChatPhase, doc: DocumentItem): string {
+  if (phase.stage === "searching") {
+    const passages = phase.passages ?? doc.chunkCount;
+    return `Searching ${passages.toLocaleString("en-US")} passages`;
+  }
+  return "Writing the answer";
+}
+
+export function ChatPanel({ doc, pages, messages, activeKey, onCite }: ChatPanelProps) {
+  const chat = useChat(doc.id);
+  const { data: suggestions } = useSuggestions(doc.id);
+  const { data: settings } = useSettings();
+  const streamAnswers = settings?.streamAnswers ?? true;
 
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const streaming = messages.some((message) => message.streaming);
-  const busy = thinking || streaming;
-  const suggestions = getSuggestions(doc.id);
+  const streamingAnswer = chat.pending.find((message) => message.role === "assistant");
+  // With streaming turned off in settings, hold the answer back until it's saved.
+  const visiblePending = streamAnswers ? chat.pending : chat.pending.filter((message) => message.role === "user");
+  const conversation = [...messages, ...visiblePending];
+  const showTyping = chat.busy && (!streamingAnswer || !streamAnswers);
 
   const scrollToBottom = useCallback(() => {
     const node = scrollRef.current;
@@ -40,17 +54,16 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages.length, thinking, scrollToBottom]);
+  }, [conversation.length, streamingAnswer?.content, chat.phase.stage, chat.error, scrollToBottom]);
 
   const submit = (text: string) => {
-    if (!text.trim() || busy) return;
+    const question = text.trim();
+    if (!question || chat.busy) return;
     stickToBottom.current = true;
-    sendMessage(doc.id, text);
+    chat.send(question.slice(0, MAX_QUESTION));
     setDraft("");
     if (textareaRef.current) textareaRef.current.style.height = "";
   };
-
-  const onStreamEnd = useCallback((id: string) => completeMessage(doc.id, id), [completeMessage, doc.id]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
@@ -63,7 +76,7 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
         className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7"
         aria-live="polite"
       >
-        {messages.length === 0 && !thinking ? (
+        {conversation.length === 0 && !chat.busy ? (
           <div className="flex h-full flex-col items-start justify-end pb-4">
             <LogoMark size={36} />
             <h2 className="mt-4 text-xl font-semibold tracking-tight">What do you want to know?</h2>
@@ -73,25 +86,32 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
           </div>
         ) : (
           <div className="mx-auto max-w-2xl space-y-7">
-            {messages.map((message) =>
+            {conversation.map((message) =>
               message.role === "user" ? (
                 <UserMessage key={message.id} message={message} />
               ) : (
                 <AssistantMessage
                   key={message.id}
                   message={message}
-                  doc={doc}
+                  pages={pages}
                   activeKey={activeKey}
                   onCite={onCite}
-                  onStreamEnd={onStreamEnd}
-                  onProgress={scrollToBottom}
                 />
               ),
             )}
-            {thinking && (
+            {showTyping && (
               <div className="flex items-center gap-3">
                 <LogoMark size={26} />
-                <TypingDots label={`Searching ${doc.chunkCount} passages`} />
+                <TypingDots label={phaseLabel(chat.phase, doc)} />
+              </div>
+            )}
+            {chat.error && (
+              <div role="alert" className="flex items-start gap-3 rounded-lg border border-[#f1d9a8] bg-[#fdf6e7] p-3 text-sm text-[#6b4300]">
+                <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <p className="flex-1">{chat.error}</p>
+                <button type="button" onClick={chat.dismissError} aria-label="Dismiss" className="opacity-70 hover:opacity-100">
+                  <X className="size-4" />
+                </button>
               </div>
             )}
           </div>
@@ -99,19 +119,21 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
       </div>
 
       <div className="border-t border-border px-4 pt-3 pb-4 sm:px-6">
-        {messages.length < 3 && (
+        {conversation.length < 3 && (
           <div className="mx-auto mb-3 flex max-w-2xl flex-wrap gap-1.5">
-            {suggestions.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                disabled={busy}
-                onClick={() => submit(suggestion)}
-                className="rounded-lg border border-border px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft hover:text-primary disabled:opacity-50"
-              >
-                {suggestion}
-              </button>
-            ))}
+            {suggestions === undefined
+              ? [0, 1, 2].map((index) => <Skeleton key={index} className="h-8 w-44 rounded-lg" />)
+              : suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    disabled={chat.busy}
+                    onClick={() => submit(suggestion)}
+                    className="rounded-lg border border-border px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft hover:text-primary disabled:opacity-50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
           </div>
         )}
         <form
@@ -129,6 +151,7 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
             ref={textareaRef}
             rows={1}
             value={draft}
+            maxLength={MAX_QUESTION}
             placeholder="Ask about this document"
             onChange={(event) => {
               setDraft(event.target.value);
@@ -144,12 +167,18 @@ export function ChatPanel({ doc, activeKey, onCite }: ChatPanelProps) {
             }}
             className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] outline-none placeholder:text-subtle-foreground focus-visible:outline-none"
           />
-          <Button type="submit" size="icon" disabled={busy || !draft.trim()} aria-label="Send question">
-            <ArrowUp />
-          </Button>
+          {chat.busy ? (
+            <Button type="button" size="icon" variant="secondary" onClick={chat.stop} aria-label="Stop answering">
+              <Square className="fill-current" />
+            </Button>
+          ) : (
+            <Button type="submit" size="icon" disabled={!draft.trim()} aria-label="Send question">
+              <ArrowUp />
+            </Button>
+          )}
         </form>
         <p className="mx-auto mt-2 max-w-2xl text-xs text-subtle-foreground">
-          Enter sends, Shift + Enter adds a line. Answers in this prototype are simulated.
+          Enter sends, Shift + Enter adds a line. Stopping an answer discards it and doesn&apos;t count toward your daily limit.
         </p>
       </div>
     </div>
