@@ -291,7 +291,6 @@ export function ProfileView() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-semibold tracking-tight">{user.name}</h2>
               <Badge variant="outline">{user.role}</Badge>
-              {user.isDemo && <Badge variant="marker">Demo</Badge>}
             </div>
             <p className="mt-1 text-[15px] text-muted-foreground">{user.email}</p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-muted-foreground">
@@ -329,7 +328,7 @@ export function ProfileView() {
 
       <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
         <p className="text-sm text-muted-foreground">
-          {user?.isDemo ? "Signing out ends this demo. Its data is deleted after 24 hours." : "You can sign back in any time."}
+          You can sign back in any time.
         </p>
         <Button variant="secondary" size="sm" onClick={() => void signOut()} disabled={signingOut}>
           {signingOut && <LoaderCircle className="animate-spin" />}

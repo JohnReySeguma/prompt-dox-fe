@@ -37,8 +37,3 @@ export function forgotPassword(email: string): Promise<void> {
 export function resetPassword(input: { token: string; newPassword: string }): Promise<void> {
   return apiFetch<void>("/v1/auth/password/reset", { method: "POST", json: input, auth: false });
 }
-
-/** Creates a fresh private demo workspace with sample documents. */
-export function demo(): Promise<AuthSession> {
-  return apiFetch<AuthSession>("/v1/auth/demo", { method: "POST", auth: false });
-}

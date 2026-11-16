@@ -66,14 +66,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(() => urlErrorMessage(searchParams.get("error"), searchParams.get("code")));
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
-  const { data: session, status, update } = useSession();
-  const isDemo = Boolean(session?.user?.isDemo);
+  const { status, update } = useSession();
 
-  // Already signed in: nothing to do here. Demo visitors may stay, to sign in
-  // to or create a real account.
+  // Already signed in: nothing to do here.
   useEffect(() => {
-    if (status === "authenticated" && !isDemo && pending === null) router.replace(callbackUrl);
-  }, [status, isDemo, pending, router, callbackUrl]);
+    if (status === "authenticated" && pending === null) router.replace(callbackUrl);
+  }, [status, pending, router, callbackUrl]);
 
   // The page stays alive (hidden) for the back button; don't come back mid-submit.
   useLayoutEffect(
@@ -246,9 +244,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
       <div className="mt-8 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium">Just looking around?</p>
-          <p className="text-[13px] text-muted-foreground">Open a workspace with sample documents. No account needed.</p>
+          <p className="text-[13px] text-muted-foreground">Explore sample documents. No account needed.</p>
         </div>
-        <TryDemoButton variant="secondary" size="sm" disabled={pending !== null} className="shrink-0" />
+        <TryDemoButton variant="secondary" size="sm" className="shrink-0" />
       </div>
     </div>
   );

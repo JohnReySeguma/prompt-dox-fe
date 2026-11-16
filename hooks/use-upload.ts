@@ -2,25 +2,22 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { useCurrentUser } from "@/hooks/use-current-user";
 import { uploadDocument } from "@/lib/api/documents";
 import { errorMessage } from "@/lib/api/errors";
 import { queryKeys } from "@/lib/queries";
-import { DEMO_MAX_FILE_BYTES, MAX_FILE_BYTES, detectFormat, useUploadStore } from "@/store/upload-store";
+import { MAX_FILE_BYTES, detectFormat, useUploadStore } from "@/store/upload-store";
 import { formatBytes } from "@/lib/utils";
 import type { DocumentItem } from "@/types";
 
 /** Validates files in the browser, then uploads each one with progress. */
 export function useUpload() {
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
-  const isDemo = Boolean(user?.isDemo);
 
   return useCallback(
     (files: File[]) => {
       const store = useUploadStore.getState();
       const errors: string[] = [];
-      const maxBytes = isDemo ? DEMO_MAX_FILE_BYTES : MAX_FILE_BYTES;
+      const maxBytes = MAX_FILE_BYTES;
 
       for (const file of files) {
         const format = detectFormat(file.name);
@@ -29,9 +26,7 @@ export function useUpload() {
           continue;
         }
         if (file.size > maxBytes) {
-          errors.push(
-            `“${file.name}” is larger than ${formatBytes(maxBytes)}${isDemo ? ", the limit for demo workspaces" : ""}.`,
-          );
+          errors.push(`“${file.name}” is larger than ${formatBytes(maxBytes)}.`);
           continue;
         }
 
@@ -53,6 +48,6 @@ export function useUpload() {
 
       store.setErrors(errors);
     },
-    [isDemo, queryClient],
+    [queryClient],
   );
 }

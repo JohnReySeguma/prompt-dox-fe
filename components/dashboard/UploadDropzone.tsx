@@ -4,15 +4,13 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileUp, TriangleAlert, Upload, X } from "lucide-react";
 import { FormatBadge } from "@/components/dashboard/FormatBadge";
-import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUpload } from "@/hooks/use-upload";
 import { useUsage } from "@/lib/queries";
-import { DEMO_MAX_FILE_BYTES, MAX_FILE_BYTES, SUPPORTED_FORMATS, useUploadStore } from "@/store/upload-store";
+import { MAX_FILE_BYTES, SUPPORTED_FORMATS, useUploadStore } from "@/store/upload-store";
 import { cn, formatBytes } from "@/lib/utils";
 
 export function UploadDropzone() {
   const upload = useUpload();
-  const user = useCurrentUser();
   const { data: usage } = useUsage();
   const inFlight = useUploadStore((state) => state.uploads.length);
   const errors = useUploadStore((state) => state.errors);
@@ -25,7 +23,7 @@ export function UploadDropzone() {
   const plan = usage?.plan ?? "free";
   // The server enforces the limit too; this just saves a doomed upload.
   const atLimit = documentLimit !== null && (usage?.documents.used ?? 0) + inFlight >= documentLimit;
-  const maxBytes = user?.isDemo ? DEMO_MAX_FILE_BYTES : MAX_FILE_BYTES;
+  const maxBytes = MAX_FILE_BYTES;
 
   const handleFiles = (files: File[]) => {
     if (files.length) upload(files);
@@ -87,9 +85,7 @@ export function UploadDropzone() {
               ? plan === "free"
                 ? "Delete a document or upgrade to Pro to add more."
                 : "Delete a document to add more."
-              : user?.isDemo
-                ? `Up to ${formatBytes(maxBytes)} per file and 3 uploads in the demo workspace.`
-                : `Up to ${formatBytes(maxBytes)} per file.`}
+              : `Up to ${formatBytes(maxBytes)} per file.`}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-1.5">

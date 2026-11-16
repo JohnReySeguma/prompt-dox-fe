@@ -99,19 +99,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       },
     }),
-    Credentials({
-      id: "demo",
-      name: "Demo",
-      credentials: {},
-      async authorize() {
-        try {
-          const session = await authApi.demo();
-          return { id: session.user.id, name: session.user.name, email: session.user.email, backend: session };
-        } catch (error) {
-          throw new BackendSignInError(error);
-        }
-      },
-    }),
     /**
      * Adopts a session the browser already got from the backend (after
      * `POST /v1/auth/register`). The tokens are checked against `GET /v1/me`,
@@ -154,6 +141,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async jwt({ token, user, account, trigger, session }) {
+      // Only Google and email accounts count as signed in. A backend demo
+      // session (from an older build) is dropped, which signs the browser out.
+      if (token.user?.isDemo || user?.backend?.user.isDemo || (account as AccountWithBackend | null)?.backendSession?.user.isDemo) {
+        return null;
+      }
       if (account) {
         const backend = account.provider === "google" ? (account as AccountWithBackend).backendSession : user?.backend;
         if (backend) return { ...token, ...tokenFromSession(backend) };

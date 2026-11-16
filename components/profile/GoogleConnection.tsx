@@ -126,8 +126,7 @@ export function GoogleConnection({ user }: { user: User }) {
             type="button"
             variant="secondary"
             size="sm"
-            disabled={user.isDemo || !CLIENT_ID}
-            title={user.isDemo ? "Not available in the demo workspace" : undefined}
+            disabled={!CLIENT_ID}
             onClick={() => {
               connect.reset();
               setOpen(true);
@@ -137,9 +136,6 @@ export function GoogleConnection({ user }: { user: User }) {
           </Button>
         )}
       </div>
-      {user.isDemo && !user.googleConnected && (
-        <p className="mt-2 text-xs text-muted-foreground">Create an account to connect Google. It isn&apos;t available in the demo.</p>
-      )}
       {error && !open && (
         <p role="alert" className="mt-2 flex gap-1.5 text-xs text-destructive">
           <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />

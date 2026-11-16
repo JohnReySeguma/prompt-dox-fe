@@ -6,7 +6,6 @@ import type { DocFormat, DocumentItem } from "@/types";
 
 export const SUPPORTED_FORMATS: DocFormat[] = ["pdf", "docx", "md", "txt"];
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
-export const DEMO_MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 export function detectFormat(name: string): DocFormat | null {
   const ext = name.split(".").pop()?.toLowerCase();

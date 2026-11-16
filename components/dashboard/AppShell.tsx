@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Suspense, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileStack, FlaskConical, LoaderCircle, LogOut, Menu, MessagesSquare, UserRound, X, type LucideIcon } from "lucide-react";
+import { FileStack, LoaderCircle, LogOut, Menu, MessagesSquare, UserRound, X, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -132,20 +132,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Shown to demo visitors on every app page. */
-function DemoBanner() {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-marker-edge/50 bg-marker-soft px-4 py-2 text-center text-[13px]">
-      <span className="inline-flex items-center gap-1.5 font-medium">
-        <FlaskConical className="size-3.5" aria-hidden /> Demo workspace — resets after 24 hours.
-      </span>
-      <Link href="/sign-up" className="font-medium text-primary hover:underline">
-        Create a free account to keep your work
-      </Link>
-    </div>
-  );
-}
-
 /** Sends signed-out visitors to sign in, then back here. Renders nothing. */
 function AuthGuard() {
   const { status } = useSession();
@@ -164,7 +150,6 @@ function AuthGuard() {
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const user = useCurrentUser();
 
   return (
     <div className="flex min-h-screen">
@@ -219,7 +204,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Pages marked data-full-height (the workspace split view) get a fixed height; others scroll the window. */}
       <div className="flex min-w-0 flex-1 flex-col pt-14 has-[[data-full-height]]:h-dvh lg:pt-0">
-        {user?.isDemo && <DemoBanner />}
         {children}
       </div>
     </div>
